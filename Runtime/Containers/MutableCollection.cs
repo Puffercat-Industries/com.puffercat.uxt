@@ -45,6 +45,8 @@ namespace Puffercat.Uxt.Containers
             {
                 collection.Remove(this);
             }
+
+            public T Value => node.value;
         }
 
         private struct Enumerator : IEnumerator<T>
@@ -89,20 +91,13 @@ namespace Puffercat.Uxt.Containers
             }
         }
 
-        [Serializable]
-        private class MultipleEnumerationException : Exception
-        {
-            public MultipleEnumerationException() : base(
-                $"Multiple enumerations of {typeof(MutableCollection<T>)} is not allowed.")
-            {
-            }
-        }
-
         private readonly List<ListNode> m_list = new();
 
         private int m_enumeratorIndex;
         private bool m_hasEnumerator = false;
 
+        public int Count => m_list.Count;
+        
         public Handle Add(T item)
         {
             var node = new ListNode(m_list.Count, item);
@@ -114,7 +109,7 @@ namespace Puffercat.Uxt.Containers
         {
             var removePos = handle.node.positionInList;
             var lastPos = m_list.Count - 1;
-
+            
             if (!m_hasEnumerator || removePos > m_enumeratorIndex)
             {
                 // Simple case: we are not iterating, or we've not yet iterated the element to be removed
@@ -128,12 +123,15 @@ namespace Puffercat.Uxt.Containers
                 // The element to be removed has already been iterated over, so if we just swap it with the last element
                 // the last element will be missed by this iteration.
                 // Solution: move the last element to the element most recently iterated.
-
+            
                 var iterPos = m_enumeratorIndex;
                 --m_enumeratorIndex;
-
+            
                 (m_list[removePos], m_list[iterPos], m_list[lastPos]) =
                     (m_list[iterPos], m_list[lastPos], m_list[removePos]);
+
+                m_list[removePos].positionInList = removePos;
+                m_list[iterPos].positionInList = iterPos;
             }
 
             m_list.RemoveAt(m_list.Count - 1);
@@ -149,6 +147,7 @@ namespace Puffercat.Uxt.Containers
             }
 
             m_hasEnumerator = true;
+            m_enumeratorIndex = -1;
             return new Enumerator(this);
         }
 
@@ -160,6 +159,15 @@ namespace Puffercat.Uxt.Containers
         IEnumerator IEnumerable.GetEnumerator()
         {
             return GetEnumerator();
+        }
+    }
+    
+    [Serializable]
+    public class MultipleEnumerationException : Exception
+    {
+        public MultipleEnumerationException() : base(
+            $"Multiple enumerations of {typeof(MutableCollection<>)} is not allowed.")
+        {
         }
     }
 }
