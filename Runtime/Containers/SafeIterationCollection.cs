@@ -14,7 +14,7 @@ namespace Puffercat.Uxt.Containers
     /// This container is useful for storing a collection of observers in the observer pattern.
     /// </summary>
     /// <typeparam name="T">Element type</typeparam>
-    public class MutableCollection<T> : IEnumerable<T>
+    public class SafeIterationCollection<T> : IEnumerable<T>
     {
         internal class ListNode
         {
@@ -30,10 +30,10 @@ namespace Puffercat.Uxt.Containers
 
         public struct Handle
         {
-            internal MutableCollection<T> collection;
+            internal SafeIterationCollection<T> collection;
             internal ListNode node;
 
-            internal Handle(MutableCollection<T> collection, ListNode node)
+            internal Handle(SafeIterationCollection<T> collection, ListNode node)
             {
                 this.collection = collection;
                 this.node = node;
@@ -51,10 +51,10 @@ namespace Puffercat.Uxt.Containers
 
         private struct Enumerator : IEnumerator<T>
         {
-            private readonly MutableCollection<T> m_parent;
+            private readonly SafeIterationCollection<T> m_parent;
             private bool m_disposed;
 
-            public Enumerator(MutableCollection<T> parent) : this()
+            public Enumerator(SafeIterationCollection<T> parent) : this()
             {
                 m_parent = parent;
             }
@@ -166,7 +166,7 @@ namespace Puffercat.Uxt.Containers
     public class MultipleEnumerationException : Exception
     {
         public MultipleEnumerationException() : base(
-            $"Multiple enumerations of {typeof(MutableCollection<>)} is not allowed.")
+            $"Multiple enumerations of {typeof(SafeIterationCollection<>)} is not allowed.")
         {
         }
     }

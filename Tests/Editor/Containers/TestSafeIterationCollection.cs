@@ -7,14 +7,14 @@ using Random = System.Random;
 
 namespace Puffercat.Editor.Tests.Editor.Containers
 {
-    public class TestMutableCollection
+    public class TestSafeIterationCollection
     {
-        private MutableCollection<string> m_collection;
+        private SafeIterationCollection<string> m_collection;
 
         [SetUp]
         public void SetUp()
         {
-            m_collection = new MutableCollection<string>()
+            m_collection = new SafeIterationCollection<string>()
             {
                 "apple",
                 "orange",
@@ -27,7 +27,7 @@ namespace Puffercat.Editor.Tests.Editor.Containers
         [Test]
         public void EmptyCollection()
         {
-            var empty = new MutableCollection<string>();
+            var empty = new SafeIterationCollection<string>();
             Assert.IsEmpty(empty);
         }
 
@@ -78,11 +78,11 @@ namespace Puffercat.Editor.Tests.Editor.Containers
         private void RandomAddRemoveDuringIteration(int iterationCount, int maxAddPerIteration)
         {
             var elements = new List<int>();
-            var handles = new List<MutableCollection<int>.Handle>();
+            var handles = new List<SafeIterationCollection<int>.Handle>();
             var counter = 0;
 
             var rng = new Random(42);
-            var collection = new MutableCollection<int>();
+            var collection = new SafeIterationCollection<int>();
 
             var totalAddElementCount = maxAddPerIteration * iterationCount;
 
