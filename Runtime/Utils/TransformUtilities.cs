@@ -37,5 +37,27 @@ namespace Puffercat.Uxt.Utils
                 Object.Destroy(root.gameObject);
             }
         }
+
+        public static Camera GetCanvasWorldCamera(this RectTransform rectTransform)
+        {
+            while (true)
+            {
+                if (rectTransform.parent is RectTransform rectTransformParent)
+                {
+                    rectTransform = rectTransformParent;
+                }
+                else
+                {
+                    var canvas = rectTransform.GetComponent<Canvas>();
+                    
+                    Debug.Assert(
+                        canvas != null && 
+                        canvas.renderMode == RenderMode.ScreenSpaceCamera &&
+                        canvas.worldCamera != null);
+                    
+                    return canvas.worldCamera;
+                }
+            }
+        }
     }
 }
