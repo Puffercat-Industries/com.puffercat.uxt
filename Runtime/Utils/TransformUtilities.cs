@@ -49,13 +49,17 @@ namespace Puffercat.Uxt.Utils
                 else
                 {
                     var canvas = rectTransform.GetComponent<Canvas>();
-                    
+
                     Debug.Assert(
-                        canvas != null && 
-                        canvas.renderMode == RenderMode.ScreenSpaceCamera &&
-                        canvas.worldCamera != null);
+                        canvas.renderMode != RenderMode.WorldSpace, 
+                        "Querying the camera of a world space canvas does not make sense.");
                     
-                    return canvas.worldCamera;
+                    if (canvas.renderMode == RenderMode.ScreenSpaceCamera)
+                    {
+                        return canvas.worldCamera;
+                    }
+
+                    return null;
                 }
             }
         }
