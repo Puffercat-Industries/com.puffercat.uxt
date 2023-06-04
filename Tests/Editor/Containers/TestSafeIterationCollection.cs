@@ -1,11 +1,11 @@
-﻿using System.Linq;
+﻿using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
 using Puffercat.Uxt.Containers;
-using System.Collections.Generic;
 using UnityEngine;
 using Random = System.Random;
 
-namespace Puffercat.Editor.Tests.Editor.Containers
+namespace Puffercat.Uxt.Tests.Editor.Containers
 {
     public class TestSafeIterationCollection
     {

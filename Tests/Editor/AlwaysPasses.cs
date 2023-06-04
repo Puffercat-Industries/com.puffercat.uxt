@@ -1,6 +1,6 @@
 ﻿using NUnit.Framework;
 
-namespace Puffercat.Editor.Tests.Editor
+namespace Puffercat.Uxt.Tests.Editor
 {
     public class AlwaysPasses
     {
