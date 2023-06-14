@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Puffercat.Uxt.Containers
 {
@@ -41,6 +42,13 @@ namespace Puffercat.Uxt.Containers
 
             var handle = new Handle(subscriberList.Add(subscriber));
             return handle;
+        }
+
+        public IEnumerable<TSubscriber> GetSubscribers(TKey key)
+        {
+            return m_subscribers.TryGetValue(key, out var subscriberList)
+                ? subscriberList
+                : Enumerable.Empty<TSubscriber>();
         }
     }
 }
