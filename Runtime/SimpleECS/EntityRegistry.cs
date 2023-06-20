@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace Puffercat.Uxt.SimpleECS
 {
-    public class EntityRegistry
+    public sealed class EntityRegistry
     {
         private struct PersistentEntityRecord
         {
@@ -13,7 +13,7 @@ namespace Puffercat.Uxt.SimpleECS
 
         private readonly List<PersistentEntityRecord> m_entityRecords = new();
         private readonly List<Entity> m_entities = new();
-        private int m_freePtr;
+        private int m_freePtr = -1;
 
         public Entity Get(in EntityHandle handle)
         {
@@ -26,7 +26,7 @@ namespace Puffercat.Uxt.SimpleECS
             {
                 return null;
             }
-            
+
             // Entity has been destroyed, so return null
             if (handle.version != rec.version)
             {
@@ -51,7 +51,7 @@ namespace Puffercat.Uxt.SimpleECS
 
             var recIndex = m_freePtr;
             m_freePtr = m_entityRecords[m_freePtr].dynamicIdOrPtr;
-            
+
             var rec = m_entityRecords[recIndex];
             ++rec.version;
             rec.dynamicIdOrPtr = m_entities.Count;
@@ -62,13 +62,35 @@ namespace Puffercat.Uxt.SimpleECS
             return entity;
         }
 
+        public EntityRegistry(int initialCapacity = 0)
+        {
+            Debug.Assert(initialCapacity >= 0, "initialCapacity >= 0");
+
+            m_entityRecords = new List<PersistentEntityRecord>(initialCapacity);
+            m_entities = new List<Entity>(initialCapacity);
+
+            for (var i = initialCapacity - 1; i >= 0; --i)
+            {
+                m_entityRecords.Add(new PersistentEntityRecord
+                {
+                    version = 0ul,
+                    dynamicIdOrPtr = m_freePtr
+                });
+
+                m_freePtr = i;
+            }
+        }
+
         public void PerformPendingDestruction()
         {
             for (var i = m_entityRecords.Count - 1; i >= 0; --i)
             {
                 var entity = m_entities[i];
-                if (entity.PendingDestroy)
+                if (entity.PendingDestruction)
                 {
+                    // The destroyed entity shall not be associated with registry anymore
+                    entity.Registry = null;
+
                     // Move the entity at the tail of the entity list to
                     // the position of the entity that is being destroyed.
                     // Update its persistent record accordingly
@@ -77,7 +99,7 @@ namespace Puffercat.Uxt.SimpleECS
                     lastRec.dynamicIdOrPtr = i;
                     m_entities[i] = lastEntity;
                     m_entityRecords[lastEntity.PersistentId] = lastRec;
-                    
+
                     m_entities.RemoveAt(m_entities.Count - 1);
 
                     // Mark the destroyed entity's record as free
@@ -91,15 +113,109 @@ namespace Puffercat.Uxt.SimpleECS
             }
         }
 
+        /// <summary>
+        /// Marks the entity as pending destruction.
+        /// It will be destroyed on the next call of <see cref="PerformPendingDestruction"/>
+        /// </summary>
+        /// <param name="entity">The entity to destroy</param>
         public void DestroyEntity(Entity entity)
         {
-            entity.PendingDestroy = false;
+            entity.PendingDestruction = false;
         }
 
+        /// <summary>
+        /// Marks the entity as pending destruction.
+        /// It will be destroyed on the next call of <see cref="PerformPendingDestruction"/>
+        /// </summary>
+        /// <param name="entityHandle">The entity to destroy</param>
         public void DestroyEntity(EntityHandle entityHandle)
         {
             Debug.Assert(entityHandle.isValid, "entityHandle.isValid");
-            entityHandle.Get(this).PendingDestroy = true;
+            entityHandle.Get(this).PendingDestruction = true;
         }
+
+        #region Iteration Methods
+
+        IEnumerable<T1> IterateEntities<T1>()
+            where T1 : IComponent
+        {
+            var count = m_entities.Count;
+            for (var i = 0; i != count; ++i)
+            {
+                var entity = m_entities[i];
+                if (entity.TryGetComponent(out T1 t1))
+                {
+                    yield return t1;
+                }
+            }
+        }
+
+        IEnumerable<(T1, T2)> IterateEntities<T1, T2>()
+            where T1 : IComponent
+            where T2 : IComponent
+        {
+            var count = m_entities.Count;
+            for (var i = 0; i != count; ++i)
+            {
+                var entity = m_entities[i];
+                if (entity.TryGetComponent(out T1 t1) && entity.TryGetComponent(out T2 t2))
+                {
+                    yield return (t1, t2);
+                }
+            }
+        }
+        
+        IEnumerable<(T1, T2, T3)> IterateEntities<T1, T2, T3>()
+            where T1 : IComponent
+            where T2 : IComponent
+            where T3 : IComponent
+        {
+            var count = m_entities.Count;
+            for (var i = 0; i != count; ++i)
+            {
+                var entity = m_entities[i];
+                if (entity.TryGetComponent(out T1 t1) && entity.TryGetComponent(out T2 t2) && entity.TryGetComponent(out T3 t3))
+                {
+                    yield return (t1, t2, t3);
+                }
+            }
+        }
+        
+        IEnumerable<(T1, T2, T3, T4)> IterateEntities<T1, T2, T3, T4>()
+            where T1 : IComponent
+            where T2 : IComponent
+            where T3 : IComponent
+            where T4 : IComponent
+        {
+            var count = m_entities.Count;
+            for (var i = 0; i != count; ++i)
+            {
+                var entity = m_entities[i];
+                if (entity.TryGetComponent(out T1 t1) && entity.TryGetComponent(out T2 t2) && entity.TryGetComponent(out T3 t3) && entity.TryGetComponent(out T4 t4))
+                {
+                    yield return (t1, t2, t3, t4);
+                }
+            }
+        }
+        
+        IEnumerable<(T1, T2, T3, T4, T5)> IterateEntities<T1, T2, T3, T4, T5>()
+            where T1 : IComponent
+            where T2 : IComponent
+            where T3 : IComponent
+            where T4 : IComponent
+            where T5 : IComponent
+        {
+            var count = m_entities.Count;
+            for (var i = 0; i != count; ++i)
+            {
+                var entity = m_entities[i];
+                if (entity.TryGetComponent(out T1 t1) && entity.TryGetComponent(out T2 t2) && entity.TryGetComponent(out T3 t3) && entity.TryGetComponent(out T4 t4) && entity.TryGetComponent(out T5 t5))
+                {
+                    yield return (t1, t2, t3, t4, t5);
+                }
+            }
+        }
+        
+        #endregion
     }
 }
