@@ -5,7 +5,14 @@
         internal bool isValid;
         internal int persistentId;
         internal ulong version;
-        
+
+        internal EntityHandle(Entity entity)
+        {
+            isValid = true;
+            persistentId = entity.PersistentId;
+            version = entity.PersistentIdVersion;
+        }
+
         /// <summary>
         /// Get the entity that this entity handle references
         /// in the entity registry.

@@ -5,18 +5,20 @@ namespace Puffercat.Uxt.SimpleECS
 {
     public class Entity
     {
+        internal ulong PersistentIdVersion { get; }
         internal int PersistentId { get; }
         public bool PendingDestruction { get; internal set; }
 
         public EntityRegistry Registry { get; internal set; }
 
-        internal Entity(EntityRegistry registry, int persistentId)
+        internal Entity(EntityRegistry registry, int persistentId, ulong persistentIdVersion)
         {
             Registry = registry;
             PersistentId = persistentId;
+            PersistentIdVersion = persistentIdVersion;
         }
 
-        private Dictionary<Type, IComponent> m_components;
+        private readonly Dictionary<Type, IComponent> m_components = new();
 
         public bool IsValid() => Registry != null;
 
@@ -25,6 +27,11 @@ namespace Puffercat.Uxt.SimpleECS
             Registry.DestroyEntity(this);
         }
 
+        public bool HasComponent<T>() where T : IComponent
+        {
+            return TryGetComponent(out T _);
+        }
+        
         public bool TryGetComponent<T>(out T outComponent) where T : IComponent
         {
             if (m_components.TryGetValue(typeof(T), out var component))
@@ -44,14 +51,33 @@ namespace Puffercat.Uxt.SimpleECS
                 return component;
             }
 
+            var newComponent = AddComponentUnsafe<T>();
+            return newComponent;
+        }
+
+        public Entity AddComponent<T>() where T : IComponent, new()
+        {
+            if (HasComponent<T>())
+            {
+                throw new Exception($"Component of type {typeof(T)} is already added");
+            }
+
+            AddComponentUnsafe<T>();
+            return this;
+        }
+        
+        private T AddComponentUnsafe<T>() where T : IComponent, new()
+        {
             var newComponent = new T();
             m_components.Add(typeof(T), newComponent);
             return newComponent;
         }
-
+        
         public void RemoveComponent<T>() where T : IComponent
         {
             m_components.Remove(typeof(T));
         }
+
+        public EntityHandle GetHandle() => new EntityHandle(this);
     }
 }

@@ -55,7 +55,7 @@ namespace Puffercat.Uxt.SimpleECS
             var rec = m_entityRecords[recIndex];
             ++rec.version;
             rec.dynamicIdOrPtr = m_entities.Count;
-            var entity = new Entity(this, recIndex);
+            var entity = new Entity(this, recIndex, rec.version);
             m_entities.Add(entity);
             m_entityRecords[recIndex] = rec;
 
@@ -83,7 +83,7 @@ namespace Puffercat.Uxt.SimpleECS
 
         public void PerformPendingDestruction()
         {
-            for (var i = m_entityRecords.Count - 1; i >= 0; --i)
+            for (var i = m_entities.Count - 1; i >= 0; --i)
             {
                 var entity = m_entities[i];
                 if (entity.PendingDestruction)
@@ -120,7 +120,7 @@ namespace Puffercat.Uxt.SimpleECS
         /// <param name="entity">The entity to destroy</param>
         public void DestroyEntity(Entity entity)
         {
-            entity.PendingDestruction = false;
+            entity.PendingDestruction = true;
         }
 
         /// <summary>
@@ -136,7 +136,7 @@ namespace Puffercat.Uxt.SimpleECS
 
         #region Iteration Methods
 
-        IEnumerable<T1> IterateEntities<T1>()
+        public IEnumerable<(Entity, T1)> IterateEntities<T1>()
             where T1 : IComponent
         {
             var count = m_entities.Count;
@@ -145,12 +145,12 @@ namespace Puffercat.Uxt.SimpleECS
                 var entity = m_entities[i];
                 if (entity.TryGetComponent(out T1 t1))
                 {
-                    yield return t1;
+                    yield return (entity, t1);
                 }
             }
         }
 
-        IEnumerable<(T1, T2)> IterateEntities<T1, T2>()
+        public IEnumerable<(Entity, T1, T2)> IterateEntities<T1, T2>()
             where T1 : IComponent
             where T2 : IComponent
         {
@@ -160,12 +160,12 @@ namespace Puffercat.Uxt.SimpleECS
                 var entity = m_entities[i];
                 if (entity.TryGetComponent(out T1 t1) && entity.TryGetComponent(out T2 t2))
                 {
-                    yield return (t1, t2);
+                    yield return (entity, t1, t2);
                 }
             }
         }
-        
-        IEnumerable<(T1, T2, T3)> IterateEntities<T1, T2, T3>()
+
+        public IEnumerable<(Entity, T1, T2, T3)> IterateEntities<T1, T2, T3>()
             where T1 : IComponent
             where T2 : IComponent
             where T3 : IComponent
@@ -174,14 +174,15 @@ namespace Puffercat.Uxt.SimpleECS
             for (var i = 0; i != count; ++i)
             {
                 var entity = m_entities[i];
-                if (entity.TryGetComponent(out T1 t1) && entity.TryGetComponent(out T2 t2) && entity.TryGetComponent(out T3 t3))
+                if (entity.TryGetComponent(out T1 t1) && entity.TryGetComponent(out T2 t2) &&
+                    entity.TryGetComponent(out T3 t3))
                 {
-                    yield return (t1, t2, t3);
+                    yield return (entity, t1, t2, t3);
                 }
             }
         }
-        
-        IEnumerable<(T1, T2, T3, T4)> IterateEntities<T1, T2, T3, T4>()
+
+        public IEnumerable<(Entity, T1, T2, T3, T4)> IterateEntities<T1, T2, T3, T4>()
             where T1 : IComponent
             where T2 : IComponent
             where T3 : IComponent
@@ -191,14 +192,15 @@ namespace Puffercat.Uxt.SimpleECS
             for (var i = 0; i != count; ++i)
             {
                 var entity = m_entities[i];
-                if (entity.TryGetComponent(out T1 t1) && entity.TryGetComponent(out T2 t2) && entity.TryGetComponent(out T3 t3) && entity.TryGetComponent(out T4 t4))
+                if (entity.TryGetComponent(out T1 t1) && entity.TryGetComponent(out T2 t2) &&
+                    entity.TryGetComponent(out T3 t3) && entity.TryGetComponent(out T4 t4))
                 {
-                    yield return (t1, t2, t3, t4);
+                    yield return (entity, t1, t2, t3, t4);
                 }
             }
         }
-        
-        IEnumerable<(T1, T2, T3, T4, T5)> IterateEntities<T1, T2, T3, T4, T5>()
+
+        public IEnumerable<(Entity, T1, T2, T3, T4, T5)> IterateEntities<T1, T2, T3, T4, T5>()
             where T1 : IComponent
             where T2 : IComponent
             where T3 : IComponent
@@ -209,13 +211,15 @@ namespace Puffercat.Uxt.SimpleECS
             for (var i = 0; i != count; ++i)
             {
                 var entity = m_entities[i];
-                if (entity.TryGetComponent(out T1 t1) && entity.TryGetComponent(out T2 t2) && entity.TryGetComponent(out T3 t3) && entity.TryGetComponent(out T4 t4) && entity.TryGetComponent(out T5 t5))
+                if (entity.TryGetComponent(out T1 t1) && entity.TryGetComponent(out T2 t2) &&
+                    entity.TryGetComponent(out T3 t3) && entity.TryGetComponent(out T4 t4) &&
+                    entity.TryGetComponent(out T5 t5))
                 {
-                    yield return (t1, t2, t3, t4, t5);
+                    yield return (entity, t1, t2, t3, t4, t5);
                 }
             }
         }
-        
+
         #endregion
     }
 }
