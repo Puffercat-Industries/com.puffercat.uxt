@@ -44,6 +44,16 @@ namespace Puffercat.Uxt.SimpleECS
             return false;
         }
 
+        public T GetComponent<T>() where T : class, IComponent
+        {
+            if (TryGetComponent(out T component))
+            {
+                return component;
+            }
+
+            return null;
+        }
+        
         public T AddOrGetComponent<T>() where T : IComponent, new()
         {
             if (TryGetComponent(out T component))

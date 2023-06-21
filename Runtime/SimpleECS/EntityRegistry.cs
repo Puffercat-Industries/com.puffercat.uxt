@@ -81,6 +81,11 @@ namespace Puffercat.Uxt.SimpleECS
             }
         }
 
+        public bool HandleIsNull(in EntityHandle handle)
+        {
+            return handle.isValid && m_entityRecords[handle.persistentId].version == handle.version;
+        }
+
         public void PerformPendingDestruction()
         {
             for (var i = m_entities.Count - 1; i >= 0; --i)
