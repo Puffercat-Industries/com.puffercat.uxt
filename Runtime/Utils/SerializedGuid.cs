@@ -26,11 +26,30 @@ namespace Puffercat.Uxt.Utils
         }
 
         [FieldOffset(0)] public Guid Guid;
-        [FieldOffset(0), SerializeField] private Int32 GuidPart1;
-        [FieldOffset(4), SerializeField] private Int32 GuidPart2;
-        [FieldOffset(8), SerializeField] private Int32 GuidPart3;
-        [FieldOffset(12), SerializeField] private Int32 GuidPart4;
+        [FieldOffset(0), SerializeField] public Int32 GuidPart1;
+        [FieldOffset(4), SerializeField] public Int32 GuidPart2;
+        [FieldOffset(8), SerializeField] public Int32 GuidPart3;
+        [FieldOffset(12), SerializeField] public Int32 GuidPart4;
 
+        public static SerializedGuid FromInts(Int32 part1, Int32 part2, Int32 part3, Int32 part4)
+        {
+            return new SerializedGuid
+            {
+                GuidPart1 = part1,
+                GuidPart2 = part2,
+                GuidPart3 = part3,
+                GuidPart4 = part4
+            };
+        }
+
+        public void ToInts(out Int32 part1, out Int32 part2, out Int32 part3, out Int32 part4)
+        {
+            part1 = GuidPart1;
+            part2 = GuidPart2;
+            part3 = GuidPart3;
+            part4 = GuidPart4;
+        }
+        
         public static implicit operator Guid(SerializedGuid uGuid)
         {
             return uGuid.Guid;

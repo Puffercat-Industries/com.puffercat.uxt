@@ -2,7 +2,9 @@
     "name": "com.puffercat.uxt.Editor",
     "rootNamespace": "Puffercat.Uxt",
     "references": [],
-    "includePlatforms": [],
+    "includePlatforms": [
+        "Editor"
+    ],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
     "overrideReferences": false,
