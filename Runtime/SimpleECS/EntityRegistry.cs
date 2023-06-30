@@ -81,7 +81,7 @@ namespace Puffercat.Uxt.SimpleECS
             }
         }
 
-        public bool HandleIsNull(in EntityHandle handle)
+        public bool HandleIsValid(in EntityHandle handle)
         {
             return handle.isValid && m_entityRecords[handle.persistentId].version == handle.version;
         }
