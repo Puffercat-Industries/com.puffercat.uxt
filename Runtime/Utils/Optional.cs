@@ -12,6 +12,11 @@ namespace Puffercat.Uxt.Utils
         public bool HasValue => m_hasValue;
         public T Value => m_hasValue ? m_value : throw new NullReferenceException();
 
+        public T ValueOr(T fallback)
+        {
+            return HasValue ? m_value : fallback;
+        }
+        
         public static string GetPath_HasValue()
         {
             return nameof(m_hasValue);
