@@ -1,7 +1,9 @@
 {
     "name": "com.puffercat.uxt.Editor",
     "rootNamespace": "Puffercat.Uxt",
-    "references": [],
+    "references": [
+        "GUID:5206fc6c1355afc4cbb548e7765801be"
+    ],
     "includePlatforms": [
         "Editor"
     ],
