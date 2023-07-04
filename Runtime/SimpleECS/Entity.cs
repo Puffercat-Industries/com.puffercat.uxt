@@ -31,7 +31,7 @@ namespace Puffercat.Uxt.SimpleECS
         {
             return TryGetComponent(out T _);
         }
-        
+
         public bool TryGetComponent<T>(out T outComponent) where T : IComponent
         {
             if (m_components.TryGetValue(typeof(T), out var component))
@@ -53,7 +53,7 @@ namespace Puffercat.Uxt.SimpleECS
 
             return null;
         }
-        
+
         public T AddOrGetComponent<T>() where T : IComponent, new()
         {
             if (TryGetComponent(out T component))
@@ -75,19 +75,24 @@ namespace Puffercat.Uxt.SimpleECS
             AddComponentUnsafe<T>();
             return this;
         }
-        
+
         private T AddComponentUnsafe<T>() where T : IComponent, new()
         {
             var newComponent = new T();
             m_components.Add(typeof(T), newComponent);
             return newComponent;
         }
-        
-        public void RemoveComponent<T>() where T : IComponent
+
+        public bool RemoveComponent<T>() where T : IComponent
         {
-            m_components.Remove(typeof(T));
+            return m_components.Remove(typeof(T));
         }
 
         public EntityHandle GetHandle() => new EntityHandle(this);
+
+        public void AddComponent(IComponent component)
+        {
+            m_components.Add(component.GetType(), component);
+        }
     }
 }
