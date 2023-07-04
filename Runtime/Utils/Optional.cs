@@ -26,5 +26,17 @@ namespace Puffercat.Uxt.Utils
         {
             return nameof(m_value);
         }
+
+        public bool TryGetValue(out T value)
+        {
+            if (m_hasValue)
+            {
+                value = m_value;
+                return true;
+            }
+
+            value = default;
+            return false;
+        }
     }
 }
