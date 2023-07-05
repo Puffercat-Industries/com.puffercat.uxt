@@ -9,10 +9,10 @@ namespace Puffercat.Uxt.Utils
         [SerializeField] private bool m_hasValue;
         [SerializeField] private T m_value;
 
-        public bool HasValue => m_hasValue;
-        public T Value => m_hasValue ? m_value : throw new NullReferenceException();
+        public readonly bool HasValue => m_hasValue;
+        public readonly T Value => m_hasValue ? m_value : throw new NullReferenceException();
 
-        public T ValueOr(T fallback)
+        public readonly T ValueOr(T fallback)
         {
             return HasValue ? m_value : fallback;
         }
@@ -27,7 +27,7 @@ namespace Puffercat.Uxt.Utils
             return nameof(m_value);
         }
 
-        public bool TryGetValue(out T value)
+        public readonly bool TryGetValue(out T value)
         {
             if (m_hasValue)
             {
