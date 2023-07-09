@@ -4,7 +4,7 @@ namespace Puffercat.Uxt.Editor.EditorUI
 {
     public class ComponentBox : VisualElement
     {
-        public VisualElement ContentBox { get; }
+        private VisualElement ContentBox { get; }
         private readonly Toggle m_toggle;
         
         public override VisualElement contentContainer { get; }

@@ -13,6 +13,11 @@ namespace Puffercat.Uxt.Editor.EditorUI
             return new PropertyField(so.FindProperty(propertyName));
         }
 
+        public static VisualElement CreatePropertyDrawer(this SerializedProperty property)
+        {
+            return new PropertyField(property);
+        }
+        
         public static IEnumerable<VisualElement> CreatePropertyDrawersForAllChildren(this SerializedProperty property)
         {
             foreach (SerializedProperty child in property)
