@@ -4,9 +4,9 @@ namespace Puffercat.Uxt.SimpleECS
 {
     public struct EntityHandle
     {
-        internal bool isValid;
-        internal int persistentId;
-        internal ulong version;
+        internal readonly bool isValid;
+        internal readonly int persistentId;
+        internal readonly ulong version;
 
         internal EntityHandle(Entity entity)
         {
