@@ -10,6 +10,12 @@ namespace Puffercat.Uxt.SimpleECS
 
         internal EntityHandle(Entity entity)
         {
+            if (entity == null)
+            {
+                this = Null;
+                return;
+            }
+            
             isValid = true;
             persistentId = entity.PersistentId;
             version = entity.PersistentIdVersion;
@@ -51,6 +57,11 @@ namespace Puffercat.Uxt.SimpleECS
         public override int GetHashCode()
         {
             return HashCode.Combine(isValid, persistentId, version);
+        }
+
+        public static EntityHandle FromEntity(Entity entity)
+        {
+            return entity?.GetHandle() ?? Null;
         }
     }
 }

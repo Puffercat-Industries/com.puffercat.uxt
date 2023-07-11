@@ -1,6 +1,6 @@
 ﻿namespace Puffercat.Uxt.SimpleECS
 {
-    public class WrappedStruct<T> : IComponent where T : struct
+    public class WrappedStruct<T> : IComponent
     {
         private T m_data;
 

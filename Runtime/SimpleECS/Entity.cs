@@ -88,7 +88,7 @@ namespace Puffercat.Uxt.SimpleECS
             return m_components.Remove(typeof(T));
         }
 
-        public EntityHandle GetHandle() => new EntityHandle(this);
+        public EntityHandle GetHandle() => new(this);
 
         public void AddComponent(IComponent component)
         {
