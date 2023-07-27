@@ -90,9 +90,10 @@ namespace Puffercat.Uxt.SimpleECS
 
         public EntityHandle GetHandle() => new(this);
 
-        public void AddComponent(IComponent component)
+        public T AddComponent<T>(T component) where T : IComponent
         {
             m_components.Add(component.GetType(), component);
+            return component;
         }
     }
 }
