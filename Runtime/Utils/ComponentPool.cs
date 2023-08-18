@@ -53,8 +53,8 @@ namespace Puffercat.Uxt.Utils
             ExtendLifetime();
             if (m_pool.TryPop(out var comp))
             {
-                comp.gameObject.SetActive(true);
                 comp.transform.SetParent(parent, worldPositionStays);
+                comp.gameObject.SetActive(true);
             }
             else
             {
