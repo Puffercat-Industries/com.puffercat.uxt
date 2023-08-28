@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 namespace Puffercat.Uxt.SimpleECS
@@ -139,6 +140,11 @@ namespace Puffercat.Uxt.SimpleECS
             entityHandle.Get(this).PendingDestruction = true;
         }
 
+        public bool ContainsEntityWithComponent<TComponent>() where TComponent : IComponent
+        {
+            return m_entities.Any(ent => ent.HasComponent<TComponent>());
+        }
+
         #region Iteration Methods
 
         public IEnumerable<(Entity, T1)> IterateEntities<T1>()
@@ -226,5 +232,20 @@ namespace Puffercat.Uxt.SimpleECS
         }
 
         #endregion
+
+        public EntityHandle FindEntityWithComponent<TComponent>() where TComponent : IComponent
+        {
+            var count = m_entities.Count;
+            for (var i = 0; i != count; ++i)
+            {
+                var entity = m_entities[i];
+                if (entity.HasComponent<TComponent>())
+                {
+                    return entity.GetHandle();
+                }
+            }
+
+            return EntityHandle.Null;
+        }
     }
 }

@@ -1,12 +1,22 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 namespace Puffercat.Uxt.Utils
 {
-    public class AssociativeCounter<TKey>
+    public sealed class AssociativeCounter<TKey>
     {
         private readonly Dictionary<TKey, int> _dict = new Dictionary<TKey, int>();
+
+        public AssociativeCounter()
+        {
+        }
+
+        public AssociativeCounter(AssociativeCounter<TKey> other)
+        {
+            _dict = other._dict.ToDictionary(pair => pair.Key, pair => pair.Value);
+        }
 
         public int IncrementKey(TKey key)
         {
@@ -47,7 +57,7 @@ namespace Puffercat.Uxt.Utils
                 _dict[key] = value;
             }
         }
-        
+
         public int CountKey(TKey key)
         {
             if (_dict.TryGetValue(key, out var count))
