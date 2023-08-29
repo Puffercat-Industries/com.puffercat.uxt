@@ -1,11 +1,12 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
 namespace Puffercat.Uxt.Utils
 {
-    public sealed class AssociativeCounter<TKey>
+    public sealed class AssociativeCounter<TKey> : IReadOnlyDictionary<TKey, int>
     {
         private readonly Dictionary<TKey, int> _dict = new Dictionary<TKey, int>();
 
@@ -67,5 +68,33 @@ namespace Puffercat.Uxt.Utils
 
             return 0;
         }
+
+        public IEnumerator<KeyValuePair<TKey, int>> GetEnumerator()
+        {
+            return _dict.GetEnumerator();
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return ((IEnumerable)_dict).GetEnumerator();
+        }
+
+        public int Count => _dict.Count;
+
+        public bool ContainsKey(TKey key)
+        {
+            return _dict.ContainsKey(key);
+        }
+
+        public bool TryGetValue(TKey key, out int value)
+        {
+            return _dict.TryGetValue(key, out value);
+        }
+
+        public int this[TKey key] => _dict[key];
+
+        public IEnumerable<TKey> Keys => _dict.Keys;
+
+        public IEnumerable<int> Values => _dict.Values;
     }
 }
