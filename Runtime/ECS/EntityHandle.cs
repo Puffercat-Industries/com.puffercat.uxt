@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Puffercat.Uxt.SimpleECS
+namespace Puffercat.Uxt.ECS
 {
     public struct EntityHandle
     {

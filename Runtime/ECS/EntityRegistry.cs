@@ -2,7 +2,7 @@
 using System.Linq;
 using UnityEngine;
 
-namespace Puffercat.Uxt.SimpleECS
+namespace Puffercat.Uxt.ECS
 {
     public sealed class EntityRegistry
     {

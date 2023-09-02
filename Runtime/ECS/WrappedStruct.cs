@@ -1,4 +1,4 @@
-﻿namespace Puffercat.Uxt.SimpleECS
+﻿namespace Puffercat.Uxt.ECS
 {
     public class WrappedStruct<T> : IComponent
     {

@@ -1,6 +1,6 @@
 ﻿using System.Linq;
 using NUnit.Framework;
-using Puffercat.Uxt.SimpleECS;
+using Puffercat.Uxt.ECS;
 using UnityEngine;
 
 namespace Puffercat.Uxt.Tests.Editor.SimpleECS

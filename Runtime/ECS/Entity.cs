@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace Puffercat.Uxt.SimpleECS
+namespace Puffercat.Uxt.ECS
 {
     public class Entity
     {
