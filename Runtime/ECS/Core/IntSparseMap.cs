@@ -1,16 +1,26 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using UnityEngine;
 
 namespace Puffercat.Uxt.ECS.Core
 {
+    public static class DummyRef<T>
+    {
+        private static T s_dummy = default;
+
+        public static ref T Dummy
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => ref s_dummy;
+        }
+    }
+
     public class IntSparseMap<T>
     {
         private const int PageSizeExp = 9;
         private const int PageSize = 1 << PageSizeExp;
         private const int BitsetSize = 1 << (PageSizeExp - 3);
-
-        private static T s_dummy = default;
 
         private readonly struct Page
         {
@@ -80,7 +90,7 @@ namespace Puffercat.Uxt.ECS.Core
             if (pageIndex >= m_pages.Count)
             {
                 found = false;
-                return ref s_dummy;
+                return ref DummyRef<T>.Dummy;
             }
 
             var page = m_pages[pageIndex];
@@ -88,7 +98,7 @@ namespace Puffercat.Uxt.ECS.Core
             if (page.IsEmpty || !page.CheckBit(offsetInPage))
             {
                 found = false;
-                return ref s_dummy;
+                return ref DummyRef<T>.Dummy;
             }
 
             found = true;

@@ -16,5 +16,9 @@
     {
         public readonly int componentAddress;
         
+        internal EntityComponentLink(int componentAddress)
+        {
+            this.componentAddress = componentAddress;
+        }
     }
 }
