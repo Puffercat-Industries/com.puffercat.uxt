@@ -9,7 +9,13 @@
     public readonly struct Entity
     {
         public readonly int id;
-        public readonly short version;
+        public readonly ulong version;
+
+        internal Entity(int id, ulong version)
+        {
+            this.id = id;
+            this.version = version;
+        }
     }
     
     public readonly struct EntityComponentLink

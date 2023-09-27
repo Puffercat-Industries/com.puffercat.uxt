@@ -1,13 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using UnityEngine;
 
 namespace Puffercat.Uxt.ECS.Core
 {
-    public static class DummyRef<T>
+    internal static class DummyRef<T>
     {
-        private static T s_dummy = default;
+        private static T s_dummy;
 
         public static ref T Dummy
         {
@@ -16,7 +17,7 @@ namespace Puffercat.Uxt.ECS.Core
         }
     }
 
-    public class IntSparseMap<T>
+    internal class IntSparseMap<T>
     {
         private const int PageSizeExp = 9;
         private const int PageSize = 1 << PageSizeExp;
@@ -63,12 +64,7 @@ namespace Puffercat.Uxt.ECS.Core
             }
         }
 
-        private readonly List<Page> m_pages;
-
-        public IntSparseMap()
-        {
-            m_pages = new List<Page>();
-        }
+        private readonly List<Page> m_pages = new();
 
         public ref T At(int key)
         {
@@ -103,6 +99,12 @@ namespace Puffercat.Uxt.ECS.Core
 
             found = true;
             return ref page[offsetInPage];
+        }
+
+        public OptionalRef<T> TryGetValue(int key)
+        {
+            ref var value = ref TryGetValue(key, out var found);
+            return found ? new OptionalRef<T>(ref value) : default;
         }
 
         public bool ContainsKey(int key)
@@ -168,6 +170,74 @@ namespace Puffercat.Uxt.ECS.Core
             Debug.Assert(key >= 0, "Negative key not supported");
             pageIndex = key >> PageSizeExp;
             offsetInPage = key & (PageSize - 1);
+        }
+    }
+
+    /// <summary>
+    /// The FreeListIntSparseMap manages an internal IntSparseMap. It allows you to quickly find
+    /// unused keys in the map with the help of a free-list data structure. However,
+    /// it does not permit manual specification of keys for additions. Keys are managed internally
+    /// to ensure efficient reuse and avoid collisions.
+    /// </summary>
+    internal class FreeListIntSparseMap<T>
+    {
+        private readonly IntSparseMap<T> m_internalSparseMap = new();
+
+        private const int FreeListGrowStep = 128;
+
+        private readonly List<int> m_freeList = new();
+        private int m_firstFree = -1;
+
+        private void GrowFreeList()
+        {
+            var newFirstFree = m_freeList.Count;
+            m_freeList.AddRange(Enumerable.Range(m_freeList.Count + 1, FreeListGrowStep));
+            m_freeList[^1] = m_firstFree;
+            m_firstFree = newFirstFree;
+        }
+
+        private int AllocateAvailableKey()
+        {
+            if (m_firstFree == -1)
+            {
+                GrowFreeList();
+            }
+
+            var allocatedKey = m_firstFree;
+            m_firstFree = m_freeList[allocatedKey];
+            m_freeList[allocatedKey] = -2;
+            return allocatedKey;
+        }
+
+        public int Add(T value)
+        {
+            var key = AllocateAvailableKey();
+            m_internalSparseMap.Add(key, value);
+            return key;
+        }
+
+        public ref T At(int key)
+        {
+            return ref m_internalSparseMap.At(key);
+        }
+
+        public ref T TryGetValue(int key, out bool found)
+        {
+            return ref m_internalSparseMap.TryGetValue(key, out found);
+        }
+
+        public bool Remove(int key)
+        {
+            var removed = m_internalSparseMap.Remove(key);
+
+            if (removed)
+            {
+                Debug.Assert(m_freeList[key] == -2);
+                m_freeList[key] = m_firstFree;
+                m_firstFree = key;
+            }
+
+            return removed;
         }
     }
 }

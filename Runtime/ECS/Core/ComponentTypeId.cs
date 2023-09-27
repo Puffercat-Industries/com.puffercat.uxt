@@ -2,17 +2,17 @@
 
 namespace Puffercat.Uxt.ECS.Core
 {
-    public struct TypeId<T> where T : struct, IComponent
+    public struct ComponentTypeId<T> where T : struct, IComponent
     {
         public static readonly TypeId Value;
 
-        static TypeId()
+        static ComponentTypeId()
         {
-            Value = TypeIdRegistry.AllocateTypeId();
+            Value = ComponentTypeIdRegistry.AllocateTypeId();
         }
     }
 
-    public static class TypeIdRegistry
+    internal static class ComponentTypeIdRegistry
     {
         public const int MaxNumTypes = 512;
         public static int NumAllocatedTypes { get; private set; } = 1;
