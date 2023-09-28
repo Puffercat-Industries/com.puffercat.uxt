@@ -66,6 +66,14 @@ namespace Puffercat.Uxt.ECS.Core
 
         private readonly List<Page> m_pages = new();
 
+        public int Count
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get;
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            private set;
+        }
+        
         public ref T At(int key)
         {
             BreakIndex(key, out var pageIndex, out var offsetInPage);
@@ -121,7 +129,7 @@ namespace Puffercat.Uxt.ECS.Core
             return !page.IsEmpty && page.CheckBit(offsetInPage);
         }
 
-        public void Add(int key, T value)
+        public ref T Add(int key, T value)
         {
             BreakIndex(key, out var pageIndex, out var offsetInPage);
 
@@ -143,6 +151,8 @@ namespace Puffercat.Uxt.ECS.Core
 
             page[offsetInPage] = value;
             page.SetBit(offsetInPage);
+            Count++;
+            return ref page[offsetInPage];
         }
 
         public bool Remove(int key)
@@ -162,6 +172,7 @@ namespace Puffercat.Uxt.ECS.Core
             }
 
             page.ClearBit(offsetInPage);
+            Count--;
             return true;
         }
 
@@ -238,6 +249,37 @@ namespace Puffercat.Uxt.ECS.Core
             }
 
             return removed;
+        }
+    }
+
+    internal static class IntSparseMapExt
+    {
+        internal static uint IncrementKey(this IntSparseMap<uint> map, int key)
+        {
+            var value = map.TryGetValue(key);
+            if (value.HasValue)
+            {
+                return ++value.Value;
+            }
+            else
+            {
+                map.Add(key, 1);
+                return 1;
+            }
+        }
+
+        internal static ulong IncrementKey(this IntSparseMap<ulong> map, int key)
+        {
+            var value = map.TryGetValue(key);
+            if (value.HasValue)
+            {
+                return ++value.Value;
+            }
+            else
+            {
+                map.Add(key, 1);
+                return 1;
+            }
         }
     }
 }

@@ -4,7 +4,7 @@ namespace Puffercat.Uxt.ECS.Core
 {
     public struct ComponentTypeId<T> where T : struct, IComponent
     {
-        public static readonly TypeId Value;
+        public static readonly ComponentTypeId Value;
 
         static ComponentTypeId()
         {
@@ -17,36 +17,36 @@ namespace Puffercat.Uxt.ECS.Core
         public const int MaxNumTypes = 512;
         public static int NumAllocatedTypes { get; private set; } = 1;
 
-        public static TypeId AllocateTypeId()
+        public static ComponentTypeId AllocateTypeId()
         {
             if (NumAllocatedTypes >= MaxNumTypes)
             {
                 throw new Exception($"You can register at most {MaxNumTypes} types in the type id registry");
             }
 
-            return new TypeId(NumAllocatedTypes++);
+            return new ComponentTypeId(NumAllocatedTypes++);
         }
     }
     
-    public readonly struct TypeId : IEquatable<TypeId>, IComparable<TypeId>
+    public readonly struct ComponentTypeId : IEquatable<ComponentTypeId>, IComparable<ComponentTypeId>
     {
         private readonly int m_value;
 
-        internal TypeId(int value)
+        internal ComponentTypeId(int value)
         {
             m_value = value;
         }
 
         public override bool Equals(object obj)
         {
-            if (obj is TypeId)
+            if (obj is ComponentTypeId)
             {
-                return Equals((TypeId)obj);
+                return Equals((ComponentTypeId)obj);
             }
             return false;
         }
 
-        public bool Equals(TypeId other)
+        public bool Equals(ComponentTypeId other)
         {
             return m_value == other.m_value;
         }
@@ -56,37 +56,37 @@ namespace Puffercat.Uxt.ECS.Core
             return m_value.GetHashCode();
         }
 
-        public static bool operator ==(TypeId a, TypeId b)
+        public static bool operator ==(ComponentTypeId a, ComponentTypeId b)
         {
             return a.Equals(b);
         }
 
-        public static bool operator !=(TypeId a, TypeId b)
+        public static bool operator !=(ComponentTypeId a, ComponentTypeId b)
         {
             return !a.Equals(b);
         }
 
-        public int CompareTo(TypeId other)
+        public int CompareTo(ComponentTypeId other)
         {
             return m_value.CompareTo(other.m_value);
         }
 
-        public static bool operator <(TypeId a, TypeId b)
+        public static bool operator <(ComponentTypeId a, ComponentTypeId b)
         {
             return a.m_value < b.m_value;
         }
 
-        public static bool operator >(TypeId a, TypeId b)
+        public static bool operator >(ComponentTypeId a, ComponentTypeId b)
         {
             return a.m_value > b.m_value;
         }
 
-        public static bool operator <=(TypeId a, TypeId b)
+        public static bool operator <=(ComponentTypeId a, ComponentTypeId b)
         {
             return a.m_value <= b.m_value;
         }
 
-        public static bool operator >=(TypeId a, TypeId b)
+        public static bool operator >=(ComponentTypeId a, ComponentTypeId b)
         {
             return a.m_value >= b.m_value;
         }
@@ -96,7 +96,7 @@ namespace Puffercat.Uxt.ECS.Core
             return m_value.ToString();
         }
         
-        public static implicit operator int(in TypeId typeId)
+        public static implicit operator int(in ComponentTypeId typeId)
         {
             return typeId.m_value;
         }

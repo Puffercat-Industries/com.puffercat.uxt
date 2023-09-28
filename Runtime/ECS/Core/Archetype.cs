@@ -19,7 +19,7 @@ namespace Puffercat.Uxt.ECS.Core
         public const short ErrorArchetypeId = 0;
         public const short EmptyArchetypeId = 1;
         
-        private readonly List<TypeId> m_typeIds;
+        private readonly List<ComponentTypeId> m_typeIds;
         private readonly int m_hashCodeCache;
 
         /// <summary>
@@ -37,7 +37,9 @@ namespace Puffercat.Uxt.ECS.Core
             get => m_typeIds is null;
         }
 
-        internal Archetype([NotNull] IEnumerable<TypeId> componentTypes)
+        public IReadOnlyList<ComponentTypeId> ComponentTypes => m_typeIds;
+        
+        internal Archetype([NotNull] IEnumerable<ComponentTypeId> componentTypes)
         {
             var list = componentTypes.ToList();
             if (list.Distinct().Count() != list.Count)
@@ -124,10 +126,10 @@ namespace Puffercat.Uxt.ECS.Core
             AddOrGetArchetypeId(s_error);
 
             // The 1st archetype is the empty archetype
-            AddOrGetArchetypeId(new Archetype(Enumerable.Empty<TypeId>()));
+            AddOrGetArchetypeId(new Archetype(Enumerable.Empty<ComponentTypeId>()));
         }
 
-        internal static short Transition_AddComponent(short srcArchetypeId, TypeId componentToAdd)
+        internal static short Transition_AddComponent(short srcArchetypeId, ComponentTypeId componentToAdd)
         {
             var jumpTable = s_jumpTables[srcArchetypeId];
             if (jumpTable.addComponentTable.TryGetValue(srcArchetypeId, out var nextArchetypeId))
@@ -150,7 +152,7 @@ namespace Puffercat.Uxt.ECS.Core
             return nextArchetypeId;
         }
         
-        internal static short Transition_RemoveComponent(short srcArchetypeId, TypeId componentToRemove)
+        internal static short Transition_RemoveComponent(short srcArchetypeId, ComponentTypeId componentToRemove)
         {
             var jumpTable = s_jumpTables[srcArchetypeId];
             if (jumpTable.removeComponentTable.TryGetValue(srcArchetypeId, out var nextArchetypeId))
@@ -177,7 +179,11 @@ namespace Puffercat.Uxt.ECS.Core
             return nextArchetypeId;
         }
 
-
+        internal static Archetype GetById(short archetypeId)
+        {
+            return s_archetypes[archetypeId];
+        }
+        
         private static short AddOrGetArchetypeId(Archetype archetype)
         {
             if (s_archetypeIds.TryGetValue(archetype, out var archetypeId))
