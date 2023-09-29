@@ -3,7 +3,7 @@ using System.Runtime.CompilerServices;
 
 namespace Puffercat.Uxt.ECS.Core
 {
-    public struct ComponentTypeId<T> where T : struct, IComponent
+    public struct ComponentTypeId<T> where T : struct, IEntityComponent<T>
     {
         public static readonly ComponentTypeId Value;
 

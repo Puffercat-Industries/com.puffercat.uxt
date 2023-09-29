@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
@@ -30,7 +31,7 @@ namespace Puffercat.Uxt.ECS.Core
         public abstract void RemoveAt(int index);
     }
 
-    public sealed class CompactArrayList<T> : CompactArrayListBase
+    public sealed class CompactArrayList<T> : CompactArrayListBase, IReadOnlyList<T>
     {
         private const int BlockSizeExp = 7;
         private const int BlockSize = (1 << BlockSizeExp);
@@ -114,5 +115,21 @@ namespace Puffercat.Uxt.ECS.Core
             AtUnchecked(m_count - 1) = default;
             --m_count;
         }
+
+        public IEnumerator<T> GetEnumerator()
+        {
+            var count = Count;
+            for (var i = 0; i < count; ++i)
+            {
+                yield return AtUnchecked(i);
+            }
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return GetEnumerator();
+        }
+
+        public T this[int index] => At(index);
     }
 }
