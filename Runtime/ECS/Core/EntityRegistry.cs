@@ -106,6 +106,7 @@ namespace Puffercat.Uxt.ECS.Core
             }
 
             compRegistry.RemoveComponentUnchecked(entity);
+            return true;
         }
 
         /// <summary>
