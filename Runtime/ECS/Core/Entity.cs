@@ -3,7 +3,7 @@
 namespace Puffercat.Uxt.ECS.Core
 {
     /// <summary>
-    /// An Entity is an object that can store a list of components.
+    /// An Entity is an object that can have a list of components.
     /// Every entity residing in a registry at a given time has a unique ID.
     /// When an entity is destroyed, its ID can be reused. Therefore, each handle
     /// to an entity has a version associated with it.
@@ -68,9 +68,9 @@ namespace Puffercat.Uxt.ECS.Core
         }
     }
     
-    public readonly struct EntityComponentLink
+    public struct EntityComponentLink
     {
-        public readonly int componentAddress;
+        public int componentAddress;
         
         internal EntityComponentLink(int componentAddress)
         {

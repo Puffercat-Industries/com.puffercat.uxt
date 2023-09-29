@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using UnityEngine;
 
 namespace Puffercat.Uxt.ECS.Core
@@ -74,7 +75,7 @@ namespace Puffercat.Uxt.ECS.Core
             private set;
         }
         
-        public ref T At(int key)
+        public ref T AtUnchecked(int key)
         {
             BreakIndex(key, out var pageIndex, out var offsetInPage);
 
@@ -83,7 +84,7 @@ namespace Puffercat.Uxt.ECS.Core
                 !m_pages[pageIndex].IsEmpty &&
                 m_pages[pageIndex].CheckBit(offsetInPage),
                 "Invalid key");
-
+            
             return ref m_pages[pageIndex][offsetInPage];
         }
 
@@ -176,6 +177,7 @@ namespace Puffercat.Uxt.ECS.Core
             return true;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void BreakIndex(int key, out int pageIndex, out int offsetInPage)
         {
             Debug.Assert(key >= 0, "Negative key not supported");
@@ -229,7 +231,12 @@ namespace Puffercat.Uxt.ECS.Core
 
         public ref T At(int key)
         {
-            return ref m_internalSparseMap.At(key);
+            return ref m_internalSparseMap.AtUnchecked(key);
+        }
+
+        public ref T AtUnchecked(int key)
+        {
+            return ref m_internalSparseMap.AtUnchecked(key);
         }
 
         public ref T TryGetValue(int key, out bool found)

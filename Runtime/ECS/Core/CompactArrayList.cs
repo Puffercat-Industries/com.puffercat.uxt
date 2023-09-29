@@ -62,7 +62,19 @@ namespace Puffercat.Uxt.ECS.Core
                 throw new ArgumentOutOfRangeException(nameof(index));
             }
 
-            return ref AtUnsafe(index);
+            return ref AtUnchecked(index);
+        }
+
+        /// <summary>
+        /// Same as <see cref="CompactArrayList{T}.At"/>, but does not check out-of-bound access
+        /// </summary>
+        /// <param name="index"></param>
+        /// <returns></returns>
+        public ref T AtUnchecked(int index)
+        {
+            var blockIndex = index >> BlockSizeExp;
+            var offset = index & (BlockSize - 1);
+            return ref m_blocks[blockIndex].storage[offset];
         }
 
         /// <summary>
@@ -78,7 +90,7 @@ namespace Puffercat.Uxt.ECS.Core
                 m_capacity += BlockSize;
             }
 
-            ref var result = ref AtUnsafe(m_count++);
+            ref var result = ref AtUnchecked(m_count++);
             result = item;
             return ref result;
         }
@@ -98,16 +110,9 @@ namespace Puffercat.Uxt.ECS.Core
                 throw new ArgumentOutOfRangeException(nameof(index));
             }
 
-            AtUnsafe(index) = AtUnsafe(m_count - 1);
-            AtUnsafe(m_count - 1) = default;
+            AtUnchecked(index) = AtUnchecked(m_count - 1);
+            AtUnchecked(m_count - 1) = default;
             --m_count;
-        }
-
-        private ref T AtUnsafe(int index)
-        {
-            var blockIndex = index >> BlockSizeExp;
-            var offset = index & (BlockSize - 1);
-            return ref m_blocks[blockIndex].storage[offset];
         }
     }
 }

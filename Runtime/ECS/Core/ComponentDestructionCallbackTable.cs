@@ -74,8 +74,8 @@ namespace Puffercat.Uxt.ECS.Core
             if (callbackId == -1) return false;
             var forwardLink = m_forwardTable.TryGetValue(callbackId, out var found);
             if (!found) return false;
-            if (m_versions.At(callbackId) != handle.version) return false;
-            m_versions.At(callbackId)++;
+            if (m_versions.AtUnchecked(callbackId) != handle.version) return false;
+            m_versions.AtUnchecked(callbackId)++;
             var list = GetOrCreateCallbackList(forwardLink.entityId, forwardLink.typeId);
             var movedBackwardLink = list[forwardLink.locationInList] = list[^1];
             m_forwardTable.At(movedBackwardLink.id).locationInList = forwardLink.locationInList;
@@ -130,10 +130,10 @@ namespace Puffercat.Uxt.ECS.Core
             // since we are removing everything in the list at once.
             foreach (var entityIdToRemove in entityIdsToRemove)
             {
-                ref var list = ref componentTable.At(entityIdToRemove);
+                ref var list = ref componentTable.AtUnchecked(entityIdToRemove);
                 foreach (var backwardLink in list)
                 {
-                    m_versions.At(backwardLink.id)++;
+                    m_versions.AtUnchecked(backwardLink.id)++;
                     m_forwardTable.Remove(backwardLink.id);
                 }
 

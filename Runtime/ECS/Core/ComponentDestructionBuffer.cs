@@ -1,10 +1,11 @@
-﻿using System.Collections.Generic;
+﻿using System.Collections;
+using System.Collections.Generic;
 using Puffercat.Uxt.Algorithms;
 using UnityEngine.Pool;
 
 namespace Puffercat.Uxt.ECS.Core
 {
-    internal class ComponentDestructionBuffer
+    internal class ComponentDestructionBuffer : IEnumerable<(ComponentTypeId, IReadOnlyList<Entity>)>
     {
         // m_buffer[typeId] is a list of entities that need to have component of said typeId removed
         private readonly Dictionary<int, List<Entity>> m_buffer = new();
@@ -16,6 +17,7 @@ namespace Puffercat.Uxt.ECS.Core
         /// </summary>
         /// <param name="entity"></param>
         /// <param name="typeId"></param>
+        /// <remarks>This function does not check whether the entity actually has the said component</remarks>
         public void QueueDestructionUnchecked(Entity entity, ComponentTypeId typeId)
         {
             if (!m_buffer.TryGetValue(typeId, out var list))
@@ -45,6 +47,29 @@ namespace Puffercat.Uxt.ECS.Core
                 list.Sort();
                 list.RemoveRange(list.DistinctRange(0, list.Count));
             }
+        }
+
+        public void InvokeCallbacksIn(ComponentDestructionCallbackTable callbackTable)
+        {
+            foreach (var componentTypeId in m_buffer.Keys)
+            {
+                callbackTable.InvokeCallbacks(
+                    ComponentTypeId.FromInt(componentTypeId),
+                    m_buffer[componentTypeId]);
+            }
+        }
+
+        public IEnumerator<(ComponentTypeId, IReadOnlyList<Entity>)> GetEnumerator()
+        {
+            foreach (var (componentIdInt, entityList) in m_buffer)
+            {
+                yield return (ComponentTypeId.FromInt(componentIdInt), entityList);
+            }
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return GetEnumerator();
         }
     }
 }

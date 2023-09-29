@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Runtime.CompilerServices;
 
 namespace Puffercat.Uxt.ECS.Core
 {
@@ -32,9 +33,16 @@ namespace Puffercat.Uxt.ECS.Core
     {
         private readonly int m_value;
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal ComponentTypeId(int value)
         {
             m_value = value;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static ComponentTypeId FromInt(int value)
+        {
+            return new ComponentTypeId(value);
         }
 
         public override bool Equals(object obj)

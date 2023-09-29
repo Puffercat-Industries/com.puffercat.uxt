@@ -9,7 +9,7 @@ using UnityEngine.Pool;
 namespace Puffercat.Uxt.ECS.Core
 {
     public delegate void ComponentDestructionCallback(Entity entity);
-    
+
     public sealed class EntityRegistry
     {
         private readonly FreeListIntSparseMap<short> m_entityArchetypeIds = new();
@@ -21,8 +21,9 @@ namespace Puffercat.Uxt.ECS.Core
         private readonly List<ComponentEvent> m_componentEvents = new();
         private readonly List<Entity> m_entitiesToDestroy = new();
 
-        private readonly ComponentDestructionBuffer m_componentDestructionBuffer;
-        
+        private readonly ComponentDestructionBuffer m_componentDestructionBuffer = new();
+        private readonly ComponentDestructionCallbackTable m_componentDestructionCallbackTable = new();
+
         public Entity CreateEntity()
         {
             // An entity starts with no components, so it always belong to the empty archetype.
@@ -35,7 +36,7 @@ namespace Puffercat.Uxt.ECS.Core
             }
             else
             {
-                version = unchecked(++m_entityVersions.At(entityId));
+                version = unchecked(++m_entityVersions.AtUnchecked(entityId));
             }
 
             return new Entity(entityId, version);
@@ -60,13 +61,61 @@ namespace Puffercat.Uxt.ECS.Core
         /// <param name="entity">The entity to get component from</param>
         /// <typeparam name="T">The type of component to get</typeparam>
         /// <returns>A reference to the component (or a dummy if not found)</returns>
-        internal OptionalRef<T> TryGetComponentUnsafe<T>(Entity entity) where T : struct, IComponent
+        internal OptionalRef<T> TryGetComponentUnchecked<T>(Entity entity) where T : struct, IComponent
         {
             var compRegistry = GetOrCreateComponentRegistry<T>();
             return compRegistry.TryGetComponent<T>(entity);
         }
 
-        internal ref T AddOrComponentUnsafe<T>(Entity entity) where T : struct, IComponent
+        public ref T AddOrGetComponent<T>(Entity entity) where T : struct, IComponent
+        {
+            if (!IsNull(entity))
+            {
+                throw new Exception("Invalid entity");
+            }
+
+            return ref AddOrGetComponentUnchecked<T>(entity);
+        }
+
+        public OptionalRef<T> TryGetComponent<T>(Entity entity) where T : struct, IComponent
+        {
+            var compRegistry = GetOrCreateComponentRegistry<T>();
+            return compRegistry.TryGetComponent<T>(entity);
+        }
+
+        public bool MarkComponentForRemoval<T>(Entity entity) where T : struct, IComponent
+        {
+            return MarkComponentForRemoval(entity, ComponentTypeId<T>.Value);
+        }
+
+        public bool MarkComponentForRemoval(Entity entity, ComponentTypeId typeId)
+        {
+            if (IsNull(entity))
+            {
+                throw new Exception("Entity is invalid");
+            }
+
+            if (!TryGetComponentRegistry(typeId, out var compRegistry))
+            {
+                return false;
+            }
+
+            if (!compRegistry.HasComponent(entity))
+            {
+                return false;
+            }
+
+            compRegistry.RemoveComponentUnchecked(entity);
+        }
+
+        /// <summary>
+        /// Adds to, or get from an entity a component of type <typeparamref name="T"/>.
+        /// This function does not check if the entity is alive or not.
+        /// </summary>
+        /// <param name="entity">The entity to add component to</param>
+        /// <typeparam name="T">The type of component to add</typeparam>
+        /// <returns></returns>
+        internal ref T AddOrGetComponentUnchecked<T>(Entity entity) where T : struct, IComponent
         {
             var compRegistry = GetOrCreateComponentRegistry<T>();
             ref var comp = ref compRegistry.AddOrGetComponent<T>(entity, out var isNewComponent);
@@ -84,26 +133,7 @@ namespace Puffercat.Uxt.ECS.Core
             return ref new OptionalRef<T>(ref comp).Value;
         }
 
-        internal void RemoveComponent(Entity entity, ComponentTypeId componentTypeId)
-        {
-            if (!TryGetComponentRegistry(componentTypeId, out var compRegistry))
-            {
-                return;
-            }
-
-            ref var archetypeId = ref m_entityArchetypeIds.At(entity.id);
-            var newArchetypeId = Archetype.Transition_RemoveComponent(archetypeId, componentTypeId);
-
-            if (newArchetypeId == Archetype.ErrorArchetypeId)
-            {
-                return;
-            }
-
-            archetypeId = newArchetypeId;
-            compRegistry.RemoveComponent(entity);
-        }
-
-        public void DestroyEntityDeferred(Entity entity)
+        public void MarkEntityForDestruction(Entity entity)
         {
             if (IsNull(entity))
             {
@@ -112,7 +142,6 @@ namespace Puffercat.Uxt.ECS.Core
 
             m_entitiesToDestroy.Add(entity);
         }
-
 
         public void ProcessDestruction()
         {
@@ -126,28 +155,63 @@ namespace Puffercat.Uxt.ECS.Core
              *      caution. Use observers instead if possible.
              *  4.  Send the binned commands to each component registries for destruction (potentially in
              *      parallel).
+             *  5.  Invoke callbacks on entities that have been destroyed
+             *  6.  Destroy them
+             *  7.  Update the archetypes of the surviving entities
              */
-            
-            MarkComponentsOfDyingEntitiesForDestruction();
+
+            using var _0 = ListPool<EntityDestructionCommand>.Get(out var entityDestructionCommands);
+            MarkComponentsOfDyingEntitiesForDestruction(entityDestructionCommands);
             m_componentDestructionBuffer.SortAndRemoveDuplicates();
+            m_componentDestructionBuffer.InvokeCallbacksIn(m_componentDestructionCallbackTable);
+
+            foreach (var (typeId, entityList) in m_componentDestructionBuffer)
+            {
+                if (TryGetComponentRegistry(typeId, out var componentRegistry))
+                {
+                    foreach (var entity in entityList)
+                    {
+                        componentRegistry.RemoveComponentUnchecked(entity);
+                    }
+                }
+            }
+
+            foreach (var (typeId, entityList) in m_componentDestructionBuffer)
+            {
+                foreach (var entity in entityList)
+                {
+                    ref var archId = ref m_entityArchetypeIds.AtUnchecked(entity.id);
+                    archId = Archetype.Transition_RemoveComponent(archId, typeId);
+                }
+            }
+
+            foreach (var entityDestructionCommand in entityDestructionCommands)
+            {
+                // TODO: call entity destruction callback
+            }
+
+            foreach (var entityDestructionCommand in entityDestructionCommands)
+            {
+                m_entityArchetypeIds.Remove(entityDestructionCommand.entity.id);
+                m_entityVersions.AtUnchecked(entityDestructionCommand.entity.id)++;
+            }
         }
 
-        private void MarkComponentsOfDyingEntitiesForDestruction()
+        private void MarkComponentsOfDyingEntitiesForDestruction(List<EntityDestructionCommand> outDestructionCommands)
         {
-            using var _0 = ListPool<EntityDestructionCommand>.Get(out var destructionCommands);
-
-            destructionCommands.AddRange(
+            outDestructionCommands.Clear();
+            outDestructionCommands.AddRange(
                 m_entitiesToDestroy
                     .Select(e => new EntityDestructionCommand(e, m_entityArchetypeIds.At(e.id))));
 
             m_entitiesToDestroy.Clear();
 
             // Sort the destruction controls, then remove duplicates
-            destructionCommands.Sort();
-            destructionCommands.RemoveRange(destructionCommands.DistinctRange(0, destructionCommands.Count));
+            outDestructionCommands.Sort();
+            outDestructionCommands.RemoveRange(outDestructionCommands.DistinctRange(0, outDestructionCommands.Count));
 
 
-            foreach (var destructionCommand in destructionCommands)
+            foreach (var destructionCommand in outDestructionCommands)
             {
                 var archetype = Archetype.GetById(destructionCommand.archetypeId);
                 foreach (var typeId in archetype.ComponentTypes)
@@ -157,16 +221,6 @@ namespace Puffercat.Uxt.ECS.Core
                     m_componentDestructionBuffer.QueueDestructionUnchecked(destructionCommand.entity, typeId);
                 }
             }
-        }
-
-        public ref T GetComponent<T>(Entity entity) where T : struct, IComponent
-        {
-            throw new System.NotImplementedException();
-        }
-
-        public ref T AddComponent<T>(Entity entity) where T : struct, IComponent
-        {
-            throw new System.NotImplementedException();
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -192,7 +246,7 @@ namespace Puffercat.Uxt.ECS.Core
         {
             m_componentEvents.Add(new ComponentEvent(entity, typeId, eventType, m_componentEvents.Count));
         }
-        
+
         private readonly struct EntityDestructionCommand : IComparable<EntityDestructionCommand>, IComparable
         {
             public int CompareTo(EntityDestructionCommand other)
@@ -257,7 +311,7 @@ namespace Puffercat.Uxt.ECS.Core
         private CompactArrayListBase m_components;
 
         // The array storing components' owning entity's ID
-        private readonly CompactArrayList<Entity> m_componentOwners = new();
+        private readonly CompactArrayList<int> m_componentOwnerIds = new();
 
         // All the component manipulation functions below do not check for whether the entity
         // is alive (i.e. its version is current). This should be guaranteed by the caller!
@@ -294,6 +348,11 @@ namespace Puffercat.Uxt.ECS.Core
             return new OptionalRef<T>(ref componentArray.At(e2CLink.Value.componentAddress));
         }
 
+        public bool HasComponent(Entity entity)
+        {
+            return m_entityToComponentLinks.ContainsKey(entity.id);
+        }
+
         public ref T AddComponent<T>(Entity entity) where T : struct, IComponent
         {
             Debug.Assert(ComponentTypeId<T>.Value == m_typeId);
@@ -327,27 +386,19 @@ namespace Puffercat.Uxt.ECS.Core
             var componentArray = CastComponentArray<T>();
             var componentAddress = componentArray.Count;
             m_entityToComponentLinks.Add(entity.id, new EntityComponentLink(componentAddress));
-            m_componentOwners.Add(entity);
+            m_componentOwnerIds.Add(entity.id);
             return ref componentArray.Add(default);
         }
 
-        public bool RemoveComponent(Entity entity)
+        public void RemoveComponentUnchecked(Entity entity)
         {
-            ref var e2CLink = ref m_entityToComponentLinks.TryGetValue(entity.id, out var hasComponent);
-            if (!hasComponent)
-            {
-                return false;
-            }
+            // TODO: Insert optional instrumentation to check whether entity has the said component
 
-            // TODO: fix up e2clink for the swapped in entity
-
-            // Note: this is virtual function call which can be expensive
+            var e2CLink = m_entityToComponentLinks.AtUnchecked(entity.id);
+            var fillerEntityId = m_componentOwnerIds.AtUnchecked(m_componentOwnerIds.Count - 1);
+            m_entityToComponentLinks.AtUnchecked(fillerEntityId).componentAddress = e2CLink.componentAddress;
+            m_componentOwnerIds.RemoveAt(e2CLink.componentAddress);
             m_components.RemoveAt(e2CLink.componentAddress);
-
-            m_componentOwners.RemoveAt(e2CLink.componentAddress);
-            m_entityToComponentLinks.Remove(entity.id);
-
-            return true;
         }
 
         private CompactArrayList<T> CastComponentArray<T>() where T : struct, IComponent
