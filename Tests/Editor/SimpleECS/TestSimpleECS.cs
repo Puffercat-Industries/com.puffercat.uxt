@@ -229,5 +229,28 @@ namespace Puffercat.Uxt.Tests.Editor.SimpleECS
                 Vector3.Distance(Vector3.one, m_registry.TryGetComponent<TransformComponent>(original).Value.position) <
                 0.01f);
         }
+
+        [Test]
+        public void TestCallbackRemoval()
+        {
+            var callbackCounter = 0;
+            var entity = m_registry.CreateEntity();
+            m_registry.AddOrGetComponent<TransformComponent>(entity);
+
+            void Callback(Entity inEntity)
+            {
+                Assert.AreEqual(entity, inEntity);
+                ++callbackCounter;
+            }
+            
+            var nullCallbackHandle = m_registry.AddComponentDestructionCallback<NeutralTag>(entity, Callback);
+            Assert.AreEqual(default(ComponentDestructionCallbackHandle), nullCallbackHandle);
+            var transformDestructionCallback =
+                m_registry.AddComponentDestructionCallback<TransformComponent>(entity, Callback);
+            m_registry.MarkEntityForDestruction(entity);
+            m_registry.RemoveComponentDestructionCallback(transformDestructionCallback);
+            m_registry.ProcessDestruction();
+            Assert.AreEqual(0, callbackCounter);
+        }
     }
 }

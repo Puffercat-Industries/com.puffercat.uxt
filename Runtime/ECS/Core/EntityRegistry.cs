@@ -28,6 +28,10 @@ namespace Puffercat.Uxt.ECS.Core
 
         private delegate void CopyComponentFunc(Entity dst, Entity src);
 
+        /// <summary>
+        /// Stores a list of functions that preserves necessary type information to perform
+        /// operations when type information is unavailable.
+        /// </summary>
         private class ComponentTypeErasedFunctions
         {
             public CopyComponentFunc copyComponentUncheckedFunc;
@@ -108,6 +112,11 @@ namespace Puffercat.Uxt.ECS.Core
             }
 
             return m_componentDestructionCallbackTable.AddCallbackUnchecked(entity, ComponentTypeId<T>.Value, callback);
+        }
+
+        public bool RemoveComponentDestructionCallback(ComponentDestructionCallbackHandle callbackHandle)
+        {
+            return m_componentDestructionCallbackTable.RemoveCallback(callbackHandle);
         }
 
         public ref T AddOrGetComponent<T>(Entity entity) where T : struct, IEntityComponent<T>
