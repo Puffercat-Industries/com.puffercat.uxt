@@ -13,7 +13,7 @@ namespace Puffercat.Uxt.ECS.Core
     public sealed class EntityRegistry
     {
         private readonly FreeListIntSparseMap<short> m_entityArchetypeIds = new();
-        private readonly IntSparseMap<ulong> m_entityVersions;
+        private readonly IntSparseMap<ulong> m_entityVersions = new();
 
         private readonly ComponentRegistry[] m_componentRegistries =
             new ComponentRegistry[ComponentTypeIdRegistry.MaxNumTypes];
@@ -54,6 +54,17 @@ namespace Puffercat.Uxt.ECS.Core
             return !found || currentVersion != entity.version;
         }
 
+        public ComponentDestructionCallbackHandle AddComponentDestructionCallback<T>(
+            Entity entity,
+            ComponentDestructionCallback callback) where T : struct, IEntityComponent<T>
+        {
+            if (IsNull(entity) || !HasComponent(entity, ComponentTypeId<T>.Value))
+            {
+                return default;
+            }
+            return m_componentDestructionCallbackTable.AddCallbackUnchecked(entity, ComponentTypeId<T>.Value, callback);
+        }
+
         /// <summary>
         /// Tries to get a reference to a component of an entity. This function does not check
         /// whether the entity is null or not.
@@ -69,7 +80,7 @@ namespace Puffercat.Uxt.ECS.Core
 
         public ref T AddOrGetComponent<T>(Entity entity) where T : struct, IEntityComponent<T>
         {
-            if (!IsNull(entity))
+            if (IsNull(entity))
             {
                 throw new Exception("Invalid entity");
             }
@@ -115,7 +126,7 @@ namespace Puffercat.Uxt.ECS.Core
                 return false;
             }
 
-            compRegistry.RemoveComponentUnchecked(entity);
+            m_componentDestructionBuffer.QueueDestructionUnchecked(entity, typeId);
             return true;
         }
 
@@ -236,6 +247,8 @@ namespace Puffercat.Uxt.ECS.Core
                 m_entityArchetypeIds.Remove(entityDestructionCommand.entity.id);
                 m_entityVersions.AtUnchecked(entityDestructionCommand.entity.id)++;
             }
+            
+            m_componentDestructionBuffer.Clear();
         }
 
         private void MarkComponentsOfDyingEntitiesForDestruction(List<EntityDestructionCommand> outDestructionCommands)
@@ -452,6 +465,7 @@ namespace Puffercat.Uxt.ECS.Core
             m_entityToComponentLinks.AtUnchecked(fillerEntity.id).componentAddress = e2CLink.componentAddress;
             m_componentOwners.RemoveAt(e2CLink.componentAddress);
             m_components.RemoveAt(e2CLink.componentAddress);
+            m_entityToComponentLinks.Remove(entity.id);
         }
 
         private CompactArrayList<T> CastComponentArray<T>() where T : struct, IEntityComponent<T>

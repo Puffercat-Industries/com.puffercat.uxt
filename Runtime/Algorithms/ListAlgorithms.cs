@@ -30,7 +30,7 @@ namespace Puffercat.Uxt.Algorithms
             int end,
             IEqualityComparer<T> comparer)
         {
-            if (start < 0 || end > list.Count || start >= end)
+            if (start < 0 || end > list.Count || start > end)
             {
                 throw new ArgumentException("Invalid range");
             }

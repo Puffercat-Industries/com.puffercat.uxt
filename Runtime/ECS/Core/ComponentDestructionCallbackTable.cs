@@ -43,7 +43,14 @@ namespace Puffercat.Uxt.ECS.Core
         private readonly IntSparseMap<uint> m_versions =
             new();
 
-        public ComponentDestructionCallbackHandle AddCallback(
+        /// <summary>
+        /// This function does not check if the entity has the given component or not!
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <param name="componentTypeId"></param>
+        /// <param name="callback"></param>
+        /// <returns></returns>
+        public ComponentDestructionCallbackHandle AddCallbackUnchecked(
             Entity entity,
             ComponentTypeId componentTypeId,
             ComponentDestructionCallback callback)

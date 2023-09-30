@@ -18,7 +18,7 @@ namespace Puffercat.Uxt.ECS.Core
     {
         public const short ErrorArchetypeId = 0;
         public const short EmptyArchetypeId = 1;
-        
+
         private readonly List<ComponentTypeId> m_typeIds;
         private readonly int m_hashCodeCache;
 
@@ -38,7 +38,7 @@ namespace Puffercat.Uxt.ECS.Core
         }
 
         public IReadOnlyList<ComponentTypeId> ComponentTypes => m_typeIds;
-        
+
         internal Archetype([NotNull] IEnumerable<ComponentTypeId> componentTypes)
         {
             var list = componentTypes.ToList();
@@ -104,8 +104,8 @@ namespace Puffercat.Uxt.ECS.Core
         {
             // These are dictionaries that map from the action (adding/removing a certain
             // type of component), to the next archetype ID the entity should have
-            public readonly Dictionary<int, short> addComponentTable;
-            public readonly Dictionary<int, short> removeComponentTable;
+            public readonly Dictionary<int, short> addComponentTable = new();
+            public readonly Dictionary<int, short> removeComponentTable = new();
         }
 
         // A list of known archetypes
@@ -132,7 +132,7 @@ namespace Puffercat.Uxt.ECS.Core
         internal static short Transition_AddComponent(short srcArchetypeId, ComponentTypeId componentToAdd)
         {
             var jumpTable = s_jumpTables[srcArchetypeId];
-            if (jumpTable.addComponentTable.TryGetValue(srcArchetypeId, out var nextArchetypeId))
+            if (jumpTable.addComponentTable.TryGetValue(componentToAdd, out var nextArchetypeId))
             {
                 return nextArchetypeId;
             }
@@ -148,14 +148,14 @@ namespace Puffercat.Uxt.ECS.Core
 
             var nextArchetype = new Archetype(srcArchetype.m_typeIds.Append(componentToAdd));
             nextArchetypeId = AddOrGetArchetypeId(nextArchetype);
-            jumpTable.addComponentTable.Add(srcArchetypeId, nextArchetypeId);
+            jumpTable.addComponentTable.Add(componentToAdd, nextArchetypeId);
             return nextArchetypeId;
         }
-        
+
         internal static short Transition_RemoveComponent(short srcArchetypeId, ComponentTypeId componentToRemove)
         {
             var jumpTable = s_jumpTables[srcArchetypeId];
-            if (jumpTable.removeComponentTable.TryGetValue(srcArchetypeId, out var nextArchetypeId))
+            if (jumpTable.removeComponentTable.TryGetValue(componentToRemove, out var nextArchetypeId))
             {
                 return nextArchetypeId;
             }
@@ -169,13 +169,13 @@ namespace Puffercat.Uxt.ECS.Core
             {
                 return 0;
             }
-            
+
             var srcArchetypeTypes = srcArchetype.m_typeIds.ToList();
             srcArchetypeTypes.RemoveAt(componentIndex);
             var nextArchetype = new Archetype(srcArchetypeTypes);
-            
+
             nextArchetypeId = AddOrGetArchetypeId(nextArchetype);
-            jumpTable.removeComponentTable.Add(srcArchetypeId, nextArchetypeId);
+            jumpTable.removeComponentTable.Add(componentToRemove, nextArchetypeId);
             return nextArchetypeId;
         }
 
@@ -183,7 +183,7 @@ namespace Puffercat.Uxt.ECS.Core
         {
             return s_archetypes[archetypeId];
         }
-        
+
         private static short AddOrGetArchetypeId(Archetype archetype)
         {
             if (s_archetypeIds.TryGetValue(archetype, out var archetypeId))
