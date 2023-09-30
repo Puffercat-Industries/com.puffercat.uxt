@@ -15,7 +15,7 @@ namespace Puffercat.Uxt.ECS.Core
 
     internal static class ComponentTypeIdRegistry
     {
-        public const int MaxNumTypes = 512;
+        public const int MaxNumTypes = 1024;
         public static int NumAllocatedTypes { get; private set; } = 1;
 
         public static ComponentTypeId AllocateTypeId()

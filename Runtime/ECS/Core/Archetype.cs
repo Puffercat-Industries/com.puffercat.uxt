@@ -93,111 +93,109 @@ namespace Puffercat.Uxt.ECS.Core
             return m_hashCodeCache;
         }
 
-
-        #region Static archetype database
-
-        /// <summary>
-        /// Encodes the information of when a component is added/removed from
-        /// an entity of a given archetype, what other archetype should it become? 
-        /// </summary>
-        private class JumpTable
+        internal class Database
         {
-            // These are dictionaries that map from the action (adding/removing a certain
-            // type of component), to the next archetype ID the entity should have
-            public readonly Dictionary<int, short> addComponentTable = new();
-            public readonly Dictionary<int, short> removeComponentTable = new();
-        }
-
-        // A list of known archetypes
-        private static readonly List<Archetype> s_archetypes = new();
-
-        // Given a known archetype, find its ID
-        private static readonly Dictionary<Archetype, short> s_archetypeIds = new();
-
-        // The jump tables for each known archetypes
-        private static readonly List<JumpTable> s_jumpTables = new();
-
-        // The error archetype instance
-        private static readonly Archetype s_error = new();
-
-        static Archetype()
-        {
-            // The 0th archetype is always the error archetype
-            AddOrGetArchetypeId(s_error);
-
-            // The 1st archetype is the empty archetype
-            AddOrGetArchetypeId(new Archetype(Enumerable.Empty<ComponentTypeId>()));
-        }
-
-        internal static short Transition_AddComponent(short srcArchetypeId, ComponentTypeId componentToAdd)
-        {
-            var jumpTable = s_jumpTables[srcArchetypeId];
-            if (jumpTable.addComponentTable.TryGetValue(componentToAdd, out var nextArchetypeId))
+            /// <summary>
+            /// Encodes the information of when a component is added/removed from
+            /// an entity of a given archetype, what other archetype should it become? 
+            /// </summary>
+            private class JumpTable
             {
+                // These are dictionaries that map from the action (adding/removing a certain
+                // type of component), to the next archetype ID the entity should have
+                public readonly Dictionary<int, short> addComponentTable = new();
+                public readonly Dictionary<int, short> removeComponentTable = new();
+            }
+
+            // A list of known archetypes
+            private readonly List<Archetype> m_archetypes = new();
+
+            // Given a known archetype, find its ID
+            private readonly Dictionary<Archetype, short> m_archetypeIds = new();
+
+            // The jump tables for each known archetypes
+            private readonly List<JumpTable> m_jumpTables = new();
+
+            // The error archetype instance
+            private readonly Archetype m_error = new();
+
+            internal Database()
+            {
+                // The 0th archetype is always the error archetype
+                AddOrGetArchetypeId(m_error);
+
+                // The 1st archetype is the empty archetype
+                AddOrGetArchetypeId(new Archetype(Enumerable.Empty<ComponentTypeId>()));
+            }
+
+            internal short Transition_AddComponent(short srcArchetypeId, ComponentTypeId componentToAdd)
+            {
+                var jumpTable = m_jumpTables[srcArchetypeId];
+                if (jumpTable.addComponentTable.TryGetValue(componentToAdd, out var nextArchetypeId))
+                {
+                    return nextArchetypeId;
+                }
+
+                var srcArchetype = m_archetypes[srcArchetypeId];
+
+                // If the component is already in the archetype, then return the error archetype
+                // (since duplicates are not allowed)
+                if (srcArchetype.m_typeIds.BinarySearch(componentToAdd) >= 0)
+                {
+                    return 0;
+                }
+
+                var nextArchetype = new Archetype(srcArchetype.m_typeIds.Append(componentToAdd));
+                nextArchetypeId = AddOrGetArchetypeId(nextArchetype);
+                jumpTable.addComponentTable.Add(componentToAdd, nextArchetypeId);
                 return nextArchetypeId;
             }
 
-            var srcArchetype = s_archetypes[srcArchetypeId];
-
-            // If the component is already in the archetype, then return the error archetype
-            // (since duplicates are not allowed)
-            if (srcArchetype.m_typeIds.BinarySearch(componentToAdd) >= 0)
+            internal short Transition_RemoveComponent(short srcArchetypeId, ComponentTypeId componentToRemove)
             {
-                return 0;
-            }
+                var jumpTable = m_jumpTables[srcArchetypeId];
+                if (jumpTable.removeComponentTable.TryGetValue(componentToRemove, out var nextArchetypeId))
+                {
+                    return nextArchetypeId;
+                }
 
-            var nextArchetype = new Archetype(srcArchetype.m_typeIds.Append(componentToAdd));
-            nextArchetypeId = AddOrGetArchetypeId(nextArchetype);
-            jumpTable.addComponentTable.Add(componentToAdd, nextArchetypeId);
-            return nextArchetypeId;
-        }
+                var srcArchetype = m_archetypes[srcArchetypeId];
 
-        internal static short Transition_RemoveComponent(short srcArchetypeId, ComponentTypeId componentToRemove)
-        {
-            var jumpTable = s_jumpTables[srcArchetypeId];
-            if (jumpTable.removeComponentTable.TryGetValue(componentToRemove, out var nextArchetypeId))
-            {
+                // If the component is not in the archetype, then return the error archetype
+                // (since you can't remove a component that doesn't exist)
+                var componentIndex = srcArchetype.m_typeIds.BinarySearch(componentToRemove);
+                if (componentIndex < 0)
+                {
+                    return 0;
+                }
+
+                var srcArchetypeTypes = srcArchetype.m_typeIds.ToList();
+                srcArchetypeTypes.RemoveAt(componentIndex);
+                var nextArchetype = new Archetype(srcArchetypeTypes);
+
+                nextArchetypeId = AddOrGetArchetypeId(nextArchetype);
+                jumpTable.removeComponentTable.Add(componentToRemove, nextArchetypeId);
                 return nextArchetypeId;
             }
 
-            var srcArchetype = s_archetypes[srcArchetypeId];
-
-            // If the component is not in the archetype, then return the error archetype
-            // (since you can't remove a component that doesn't exist)
-            var componentIndex = srcArchetype.m_typeIds.BinarySearch(componentToRemove);
-            if (componentIndex < 0)
+            internal Archetype GetById(short archetypeId)
             {
-                return 0;
+                return m_archetypes[archetypeId];
             }
 
-            var srcArchetypeTypes = srcArchetype.m_typeIds.ToList();
-            srcArchetypeTypes.RemoveAt(componentIndex);
-            var nextArchetype = new Archetype(srcArchetypeTypes);
-
-            nextArchetypeId = AddOrGetArchetypeId(nextArchetype);
-            jumpTable.removeComponentTable.Add(componentToRemove, nextArchetypeId);
-            return nextArchetypeId;
-        }
-
-        internal static Archetype GetById(short archetypeId)
-        {
-            return s_archetypes[archetypeId];
-        }
-
-        private static short AddOrGetArchetypeId(Archetype archetype)
-        {
-            if (s_archetypeIds.TryGetValue(archetype, out var archetypeId))
+            private short AddOrGetArchetypeId(Archetype archetype)
             {
+                if (m_archetypeIds.TryGetValue(archetype, out var archetypeId))
+                {
+                    return archetypeId;
+                }
+
+                archetypeId = (short)m_archetypes.Count;
+                m_archetypes.Add(archetype);
+                m_archetypeIds.Add(archetype, archetypeId);
+                m_jumpTables.Add(new JumpTable());
                 return archetypeId;
             }
-
-            archetypeId = (short)s_archetypes.Count;
-            s_archetypes.Add(archetype);
-            s_archetypeIds.Add(archetype, archetypeId);
-            s_jumpTables.Add(new JumpTable());
-            return archetypeId;
         }
-
-        #endregion
     }
 }

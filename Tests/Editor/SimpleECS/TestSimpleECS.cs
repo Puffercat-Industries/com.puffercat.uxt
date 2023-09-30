@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace Puffercat.Uxt.Tests.Editor.SimpleECS
 {
-    public class TestSimpleECS
+    public class TestSimpleEcs
     {
         private EntityRegistry m_registry;
 

@@ -12,6 +12,8 @@ namespace Puffercat.Uxt.ECS.Core
 
     public sealed class EntityRegistry
     {
+        private readonly Archetype.Database m_archetypeDatabase = new();
+        
         private readonly FreeListIntSparseMap<short> m_entityArchetypeIds = new();
         private readonly IntSparseMap<ulong> m_entityVersions = new();
 
@@ -145,7 +147,7 @@ namespace Puffercat.Uxt.ECS.Core
             if (isNewComponent)
             {
                 ref var archetypeId = ref m_entityArchetypeIds.At(entity.id);
-                var newArchetypeId = Archetype.Transition_AddComponent(
+                var newArchetypeId = m_archetypeDatabase.Transition_AddComponent(
                     archetypeId, ComponentTypeId<T>.Value);
                 archetypeId = newArchetypeId;
 
@@ -233,7 +235,7 @@ namespace Puffercat.Uxt.ECS.Core
                 foreach (var entity in entityList)
                 {
                     ref var archId = ref m_entityArchetypeIds.AtUnchecked(entity.id);
-                    archId = Archetype.Transition_RemoveComponent(archId, typeId);
+                    archId = m_archetypeDatabase.Transition_RemoveComponent(archId, typeId);
                 }
             }
 
@@ -267,7 +269,7 @@ namespace Puffercat.Uxt.ECS.Core
 
             foreach (var destructionCommand in outDestructionCommands)
             {
-                var archetype = Archetype.GetById(destructionCommand.archetypeId);
+                var archetype = m_archetypeDatabase.GetById(destructionCommand.archetypeId);
                 foreach (var typeId in archetype.ComponentTypes)
                 {
                     // Unchecked destruction is OK since we know the archetype of the entity (i.e. it certainly has
