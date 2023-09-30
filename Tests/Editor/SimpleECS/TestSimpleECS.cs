@@ -131,7 +131,7 @@ namespace Puffercat.Uxt.Tests.Editor.SimpleECS
         public void SimpleAddAndRemoveComponent()
         {
             var callbackInvocationCounter = 0;
-            
+
             for (var i = 0; i < 512; ++i)
             {
                 var entity = m_registry.CreateEntity();
@@ -184,9 +184,9 @@ namespace Puffercat.Uxt.Tests.Editor.SimpleECS
                     Assert.False(failedToRemoveFriendlyTag);
                 }
             }
-            
+
             m_registry.ProcessDestruction();
-            
+
             Assert.AreEqual(256, callbackInvocationCounter);
             Assert.AreEqual(0, m_registry.GetAllEntitiesWithComponent<EnemyTag>().Count());
 
@@ -194,18 +194,40 @@ namespace Puffercat.Uxt.Tests.Editor.SimpleECS
             {
                 m_registry.MarkEntityForDestruction(entity);
             }
-            
+
             foreach (var entity in m_registry.GetAllEntitiesWithComponent<TransformComponent>())
             {
                 m_registry.MarkComponentForRemoval<TransformComponent>(entity);
             }
-            
+
             m_registry.ProcessDestruction();
-            
+
             Assert.AreEqual(0, callbackInvocationCounter);
             Assert.AreEqual(0, m_registry.GetAllEntitiesWithComponent<FriendlyTag>().Count());
             Assert.AreEqual(0, m_registry.GetAllEntitiesWithComponent<TransformComponent>().Count());
             Assert.AreEqual(0, m_registry.GetAllEntitiesWithComponent<EnemyTag>().Count());
+        }
+
+        public struct CopyMarker : IEntityTag<CopyMarker>
+        {
+        }
+
+        [Test]
+        public void CopyingComponent()
+        {
+            var original = m_registry.CreateEntity();
+            m_registry.AddOrGetComponent<TransformComponent>(original).position = Vector3.one;
+            var copied = m_registry.CopyEntity(original);
+            m_registry.AddOrGetComponent<CopyMarker>(copied);
+            m_registry.TryGetComponent<TransformComponent>(copied).Value.position *= 2;
+
+            Assert.AreEqual(2, m_registry.GetAllEntitiesWithComponent<TransformComponent>().Count());
+            Assert.AreEqual(1, m_registry.GetAllEntitiesWithComponent<CopyMarker>().Count());
+            Assert.AreEqual(1, m_registry.GetAllEntitiesWithComponent<CopyMarker, TransformComponent>().Count());
+            Assert.AreEqual(copied, m_registry.GetAllEntitiesWithComponent<CopyMarker>().First());
+            Assert.True(
+                Vector3.Distance(Vector3.one, m_registry.TryGetComponent<TransformComponent>(original).Value.position) <
+                0.01f);
         }
     }
 }
