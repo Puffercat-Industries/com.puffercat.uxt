@@ -13,18 +13,25 @@ namespace Puffercat.Uxt.ECS.Core
     public sealed class EntityRegistry
     {
         private readonly Archetype.Database m_archetypeDatabase = new();
-        
+
         private readonly FreeListIntSparseMap<short> m_entityArchetypeIds = new();
         private readonly IntSparseMap<ulong> m_entityVersions = new();
 
-        private readonly ComponentRegistry[] m_componentRegistries =
-            new ComponentRegistry[ComponentTypeIdRegistry.MaxNumTypes];
+        private readonly List<ComponentRegistry> m_componentRegistries = new();
+        private readonly List<ComponentTypeErasedFunctions> m_componentTypeErasedFunctionTable = new();
 
         private readonly List<ComponentEvent> m_componentEvents = new();
         private readonly List<Entity> m_entitiesToDestroy = new();
 
         private readonly ComponentDestructionBuffer m_componentDestructionBuffer = new();
         private readonly ComponentDestructionCallbackTable m_componentDestructionCallbackTable = new();
+
+        private delegate void CopyComponentFunc(Entity dst, Entity src);
+
+        private class ComponentTypeErasedFunctions
+        {
+            public CopyComponentFunc copyComponentUncheckedFunc;
+        }
 
         public Entity CreateEntity()
         {
@@ -42,6 +49,41 @@ namespace Puffercat.Uxt.ECS.Core
             }
 
             return new Entity(entityId, version);
+        }
+
+        /// <summary>
+        /// Create a new entity that is a copy of <paramref name="src"/> (i.e. all
+        /// of its components are copied).
+        /// </summary>
+        /// <param name="src">The entity to copy</param>
+        public Entity CopyEntity(Entity src)
+        {
+            if (IsNull(src))
+            {
+                return default;
+            }
+
+            var dst = CreateEntity();
+            var archetype = m_archetypeDatabase.GetById(m_entityArchetypeIds.AtUnchecked(src.id));
+            foreach (var typeId in archetype.ComponentTypes)
+            {
+                CopyComponentUnchecked(dst, src, typeId);
+            }
+
+            return dst;
+        }
+
+        /// <summary>
+        /// Copies the component of the given <paramref name="typeId"/> on <paramref name="src"/> entity
+        /// to <paramref name="dst"/> entity. This does not check whether src has the component or
+        /// whether dst already has the component.
+        /// </summary>
+        /// <param name="dst"></param>
+        /// <param name="src"></param>
+        /// <param name="typeId"></param>
+        private void CopyComponentUnchecked(Entity dst, Entity src, ComponentTypeId typeId)
+        {
+            m_componentTypeErasedFunctionTable[typeId].copyComponentUncheckedFunc?.Invoke(dst, src);
         }
 
         public bool IsNull(Entity entity)
@@ -64,20 +106,8 @@ namespace Puffercat.Uxt.ECS.Core
             {
                 return default;
             }
-            return m_componentDestructionCallbackTable.AddCallbackUnchecked(entity, ComponentTypeId<T>.Value, callback);
-        }
 
-        /// <summary>
-        /// Tries to get a reference to a component of an entity. This function does not check
-        /// whether the entity is null or not.
-        /// </summary>
-        /// <param name="entity">The entity to get component from</param>
-        /// <typeparam name="T">The type of component to get</typeparam>
-        /// <returns>A reference to the component (or a dummy if not found)</returns>
-        internal OptionalRef<T> TryGetComponentUnchecked<T>(Entity entity) where T : struct, IEntityComponent<T>
-        {
-            var compRegistry = GetOrCreateComponentRegistry<T>();
-            return compRegistry.TryGetComponent<T>(entity);
+            return m_componentDestructionCallbackTable.AddCallbackUnchecked(entity, ComponentTypeId<T>.Value, callback);
         }
 
         public ref T AddOrGetComponent<T>(Entity entity) where T : struct, IEntityComponent<T>
@@ -249,7 +279,7 @@ namespace Puffercat.Uxt.ECS.Core
                 m_entityArchetypeIds.Remove(entityDestructionCommand.entity.id);
                 m_entityVersions.AtUnchecked(entityDestructionCommand.entity.id)++;
             }
-            
+
             m_componentDestructionBuffer.Clear();
         }
 
@@ -265,7 +295,6 @@ namespace Puffercat.Uxt.ECS.Core
             // Sort the destruction controls, then remove duplicates
             outDestructionCommands.Sort();
             outDestructionCommands.RemoveRange(outDestructionCommands.DistinctRange(0, outDestructionCommands.Count));
-
 
             foreach (var destructionCommand in outDestructionCommands)
             {
@@ -283,14 +312,54 @@ namespace Puffercat.Uxt.ECS.Core
         private ComponentRegistry GetOrCreateComponentRegistry<T>() where T : struct, IEntityComponent<T>
         {
             var typeId = ComponentTypeId<T>.Value;
-            return m_componentRegistries[typeId] ??
-                   (m_componentRegistries[typeId] = ComponentRegistry.Create<T>());
+            while (typeId >= m_componentRegistries.Count)
+            {
+                m_componentRegistries.Add(null);
+                m_componentTypeErasedFunctionTable.Add(null);
+            }
+
+            var compRegistry = m_componentRegistries[typeId];
+            if (compRegistry != null)
+            {
+                return compRegistry;
+            }
+
+            compRegistry = ComponentRegistry.Create<T>();
+            m_componentTypeErasedFunctionTable[typeId] = CreateTypeErasedFunctions<T>();
+            m_componentRegistries[typeId] = compRegistry;
+            return compRegistry;
+        }
+
+        private ComponentTypeErasedFunctions CreateTypeErasedFunctions<T>() where T : struct, IEntityComponent<T>
+        {
+            return new ComponentTypeErasedFunctions
+            {
+                copyComponentUncheckedFunc = (dst, src) =>
+                {
+                    ref var dstComp = ref AddOrGetComponentUnchecked<T>(dst);
+                    ref var srcComp = ref AddOrGetComponentUnchecked<T>(src);
+                    dstComp = srcComp.Copy();
+                }
+            };
         }
 
         private bool TryGetComponentRegistry(ComponentTypeId typeId, out ComponentRegistry registry)
         {
             registry = m_componentRegistries[typeId];
             return registry != null;
+        }
+
+        /// <summary>
+        /// Gets the component registry for a certain type of component. This function does not check
+        /// whether the said component registry has already been created or not (so it can return null). 
+        /// </summary>
+        /// <param name="typeId"></param>
+        /// <returns></returns>
+        private ComponentRegistry GetComponentRegistryUnchecked(ComponentTypeId typeId)
+        {
+            Debug.Assert(m_componentRegistries[typeId] != null);
+
+            return m_componentRegistries[typeId];
         }
 
         private void QueueComponentEvent<T>(Entity entity, ComponentEventType eventType)
@@ -393,8 +462,9 @@ namespace Puffercat.Uxt.ECS.Core
         {
             var registry = new ComponentRegistry(ComponentTypeId<T>.Value)
             {
-                m_components = new CompactArrayList<T>()
+                m_components = new CompactArrayList<T>(),
             };
+
             return registry;
         }
 
@@ -429,7 +499,7 @@ namespace Puffercat.Uxt.ECS.Core
                 throw new Exception($"Entity {entity.id} already has component {typeof(T)}");
             }
 
-            return ref AddComponentUnsafe<T>(entity);
+            return ref AddComponentUnchecked<T>(entity);
         }
 
         public ref T AddOrGetComponent<T>(Entity entity, out bool isNewComponent) where T : struct, IEntityComponent<T>
@@ -445,11 +515,11 @@ namespace Puffercat.Uxt.ECS.Core
             else
             {
                 isNewComponent = true;
-                return ref AddComponentUnsafe<T>(entity);
+                return ref AddComponentUnchecked<T>(entity);
             }
         }
 
-        private ref T AddComponentUnsafe<T>(Entity entity) where T : struct, IEntityComponent<T>
+        private ref T AddComponentUnchecked<T>(Entity entity) where T : struct, IEntityComponent<T>
         {
             var componentArray = CastComponentArray<T>();
             var componentAddress = componentArray.Count;
