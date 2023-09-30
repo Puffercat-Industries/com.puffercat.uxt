@@ -1,6 +1,6 @@
 ﻿namespace Puffercat.Uxt.ECS.Core
 {
-    public enum ComponentEventType
+    public enum ComponentEventType : byte
     {
         CreationOrModification,
         Destruction
