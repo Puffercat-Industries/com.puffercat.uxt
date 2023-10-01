@@ -354,6 +354,12 @@ namespace Puffercat.Uxt.ECS.Core
 
         private bool TryGetComponentRegistry(ComponentTypeId typeId, out ComponentRegistry registry)
         {
+            if (typeId >= m_componentRegistries.Count)
+            {
+                registry = null;
+                return false;
+            }
+
             registry = m_componentRegistries[typeId];
             return registry != null;
         }

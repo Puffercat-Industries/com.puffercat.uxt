@@ -2,6 +2,7 @@
 using NUnit.Framework;
 using Puffercat.Uxt.ECS.Components;
 using Puffercat.Uxt.ECS.Core;
+using Puffercat.Uxt.ECS.Extensions;
 using UnityEngine;
 
 namespace Puffercat.Uxt.Tests.Editor.SimpleECS
@@ -251,6 +252,44 @@ namespace Puffercat.Uxt.Tests.Editor.SimpleECS
             m_registry.RemoveComponentDestructionCallback(transformDestructionCallback);
             m_registry.ProcessDestruction();
             Assert.AreEqual(0, callbackCounter);
+        }
+
+        private struct IntComponent : IEntityComponent<IntComponent>
+        {
+            public int value;
+        }
+        
+        [Test]
+        public void SimpleSnapshot()
+        {
+            for (var i = 0; i < 512; ++i)
+            {
+                var entity = m_registry.CreateEntityWithSnapshotSupport();
+                m_registry.AddOrGetComponent<IntComponent>(entity).value = i * 2;
+            }
+            
+            m_registry.MakeSnapshot();
+
+            foreach (var entity in m_registry.GetSnapshotSourceEntities<IntComponent>())
+            {
+                ref var intComp = ref m_registry.AddOrGetComponent<IntComponent>(entity);
+                Assert.True(intComp.value % 2 == 0);
+                intComp.value += 1;
+            }
+
+            foreach (var entity in m_registry.GetSnapshotSourceEntities<IntComponent>())
+            {
+                ref var intComp = ref m_registry.AddOrGetComponent<IntComponent>(entity);
+                Assert.True(intComp.value % 2 == 1);
+            }
+            
+            m_registry.RestoreSnapshot();
+            
+            foreach (var entity in m_registry.GetSnapshotSourceEntities<IntComponent>())
+            {
+                ref var intComp = ref m_registry.AddOrGetComponent<IntComponent>(entity);
+                Assert.True(intComp.value % 2 == 0);
+            }
         }
     }
 }
