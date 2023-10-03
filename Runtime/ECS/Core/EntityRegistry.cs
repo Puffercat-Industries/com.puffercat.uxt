@@ -135,6 +135,11 @@ namespace Puffercat.Uxt.ECS.Core
             return compRegistry.TryGetComponent(entity);
         }
 
+        public ref T GetComponent<T>(Entity entity) where T : struct, IEntityComponent<T>
+        {
+            return ref TryGetComponent<T>(entity).Value;
+        }
+
         public bool HasComponent(Entity entity, ComponentTypeId typeId)
         {
             if (IsNull(entity))
