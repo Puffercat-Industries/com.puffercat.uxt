@@ -1,8 +1,6 @@
 ﻿using System.Linq;
 using NUnit.Framework;
-using Puffercat.Uxt.ECS.Components;
 using Puffercat.Uxt.ECS.Core;
-using Puffercat.Uxt.ECS.Extensions;
 using UnityEngine;
 
 namespace Puffercat.Uxt.Tests.Editor.SimpleECS
@@ -18,15 +16,15 @@ namespace Puffercat.Uxt.Tests.Editor.SimpleECS
             public Vector3 scale;
         }
 
-        private struct EnemyTag : IEntityTag<EnemyTag>
+        private struct EnemyTag : IEntityComponent<EnemyTag>
         {
         }
 
-        private struct FriendlyTag : IEntityTag<FriendlyTag>
+        private struct FriendlyTag : IEntityComponent<FriendlyTag>
         {
         }
 
-        private struct NeutralTag : IEntityTag<NeutralTag>
+        private struct NeutralTag : IEntityComponent<NeutralTag>
         {
         }
 
@@ -209,7 +207,7 @@ namespace Puffercat.Uxt.Tests.Editor.SimpleECS
             Assert.AreEqual(0, m_registry.GetAllEntitiesWithComponent<EnemyTag>().Count());
         }
 
-        public struct CopyMarker : IEntityTag<CopyMarker>
+        public struct CopyMarker : IEntityComponent<CopyMarker>
         {
         }
 
