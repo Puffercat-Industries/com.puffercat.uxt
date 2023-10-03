@@ -5,7 +5,7 @@ using UnityEngine.Pool;
 
 namespace Puffercat.Uxt.ECS.Core
 {
-    internal class ComponentDestructionBuffer : IEnumerable<(ComponentTypeId, IReadOnlyList<Entity>)>
+    internal class ComponentDestructionBuffer : IEnumerable<(ComponentTypeId, List<Entity>)>
     {
         // m_buffer[typeId] is a list of entities that need to have component of said typeId removed
         private readonly Dictionary<int, List<Entity>> m_buffer = new();
@@ -59,7 +59,7 @@ namespace Puffercat.Uxt.ECS.Core
             }
         }
 
-        public IEnumerator<(ComponentTypeId, IReadOnlyList<Entity>)> GetEnumerator()
+        public IEnumerator<(ComponentTypeId, List<Entity>)> GetEnumerator()
         {
             foreach (var (componentIdInt, entityList) in m_buffer)
             {

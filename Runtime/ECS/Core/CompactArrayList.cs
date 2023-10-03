@@ -18,17 +18,6 @@ namespace Puffercat.Uxt.ECS.Core
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => m_count;
         }
-
-
-        /// <summary>
-        /// Removes the element at the specified index from the list.
-        /// Note that this operation does not guarantee the order of other items in the list.
-        /// </summary>
-        /// <param name="index">The zero-based index of the item to remove.</param>
-        /// <exception cref="ArgumentOutOfRangeException">
-        /// Thrown when the index is less than 0 or greater than or equal to the count of elements in the list.
-        /// </exception>
-        public abstract void RemoveAt(int index);
     }
 
     public sealed class CompactArrayList<T> : CompactArrayListBase, IReadOnlyList<T>
@@ -104,7 +93,7 @@ namespace Puffercat.Uxt.ECS.Core
         /// <exception cref="ArgumentOutOfRangeException">
         /// Thrown when the index is less than 0 or greater than or equal to the count of elements in the list.
         /// </exception>
-        public override void RemoveAt(int index)
+        public void RemoveAt(int index)
         {
             if (index < 0 || index >= m_count)
             {

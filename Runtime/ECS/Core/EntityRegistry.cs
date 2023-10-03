@@ -17,7 +17,7 @@ namespace Puffercat.Uxt.ECS.Core
         private readonly FreeListIntSparseMap<short> m_entityArchetypeIds = new();
         private readonly IntSparseMap<ulong> m_entityVersions = new();
 
-        private readonly List<ComponentRegistry> m_componentRegistries = new();
+        private readonly List<ComponentRegistryBase> m_componentRegistries = new();
         private readonly List<ComponentTypeErasedFunctions> m_componentTypeErasedFunctionTable = new();
 
         private readonly List<ComponentEvent> m_componentEvents = new();
@@ -132,7 +132,7 @@ namespace Puffercat.Uxt.ECS.Core
         public OptionalRef<T> TryGetComponent<T>(Entity entity) where T : struct, IEntityComponent<T>
         {
             var compRegistry = GetOrCreateComponentRegistry<T>();
-            return compRegistry.TryGetComponent<T>(entity);
+            return compRegistry.TryGetComponent(entity);
         }
 
         public bool HasComponent(Entity entity, ComponentTypeId typeId)
@@ -181,7 +181,7 @@ namespace Puffercat.Uxt.ECS.Core
         internal ref T AddOrGetComponentUnchecked<T>(Entity entity) where T : struct, IEntityComponent<T>
         {
             var compRegistry = GetOrCreateComponentRegistry<T>();
-            ref var comp = ref compRegistry.AddOrGetComponent<T>(entity, out var isNewComponent);
+            ref var comp = ref compRegistry.AddOrGetComponent(entity, out var isNewComponent);
 
             if (isNewComponent)
             {
@@ -262,10 +262,7 @@ namespace Puffercat.Uxt.ECS.Core
             {
                 if (TryGetComponentRegistry(typeId, out var componentRegistry))
                 {
-                    foreach (var entity in entityList)
-                    {
-                        componentRegistry.RemoveComponentUnchecked(entity);
-                    }
+                    componentRegistry.RemoveComponentBulkUnchecked(entityList);
                 }
             }
 
@@ -318,7 +315,7 @@ namespace Puffercat.Uxt.ECS.Core
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private ComponentRegistry GetOrCreateComponentRegistry<T>() where T : struct, IEntityComponent<T>
+        private ComponentRegistry<T> GetOrCreateComponentRegistry<T>() where T : struct, IEntityComponent<T>
         {
             var typeId = ComponentTypeId<T>.Value;
             while (typeId >= m_componentRegistries.Count)
@@ -327,13 +324,12 @@ namespace Puffercat.Uxt.ECS.Core
                 m_componentTypeErasedFunctionTable.Add(null);
             }
 
-            var compRegistry = m_componentRegistries[typeId];
-            if (compRegistry != null)
+            if (m_componentRegistries[typeId] is ComponentRegistry<T> compRegistry)
             {
                 return compRegistry;
             }
 
-            compRegistry = ComponentRegistry.Create<T>();
+            compRegistry = new ComponentRegistry<T>();
             m_componentTypeErasedFunctionTable[typeId] = CreateTypeErasedFunctions<T>();
             m_componentRegistries[typeId] = compRegistry;
             return compRegistry;
@@ -352,7 +348,7 @@ namespace Puffercat.Uxt.ECS.Core
             };
         }
 
-        private bool TryGetComponentRegistry(ComponentTypeId typeId, out ComponentRegistry registry)
+        private bool TryGetComponentRegistry(ComponentTypeId typeId, out ComponentRegistryBase registry)
         {
             if (typeId >= m_componentRegistries.Count)
             {
@@ -370,7 +366,7 @@ namespace Puffercat.Uxt.ECS.Core
         /// </summary>
         /// <param name="typeId"></param>
         /// <returns></returns>
-        private ComponentRegistry GetComponentRegistryUnchecked(ComponentTypeId typeId)
+        private ComponentRegistryBase GetComponentRegistryUnchecked(ComponentTypeId typeId)
         {
             Debug.Assert(m_componentRegistries[typeId] != null);
 
@@ -436,23 +432,18 @@ namespace Puffercat.Uxt.ECS.Core
         }
     }
 
-    public sealed class ComponentRegistry
+    internal abstract class ComponentRegistryBase
     {
-        private struct ComponentRecord<T> where T : struct, IEntityComponent<T>
-        {
-        }
-
-        // The type id of the component type stored in this registry
-        private readonly ComponentTypeId m_typeId;
-
         // Stores the permanent link mapping entity IDs to the actual component data
-        private readonly IntSparseMap<EntityComponentLink> m_entityToComponentLinks = new();
-
-        // The array storing actual component data
-        private CompactArrayListBase m_components;
+        protected readonly IntSparseMap<EntityComponentLink> m_entityToComponentLinks = new();
 
         // The array storing components' owning entity's ID
-        private readonly CompactArrayList<Entity> m_componentOwners = new();
+        protected readonly CompactArrayList<Entity> m_componentOwners = new();
+
+        // The type id of the component type stored in this registry
+        protected ComponentTypeId m_typeId = default;
+
+        public IEnumerable<Entity> Entities => m_componentOwners;
 
         /// <summary>
         /// Returns the number of components stored in this registry
@@ -463,32 +454,40 @@ namespace Puffercat.Uxt.ECS.Core
             get => m_componentOwners.Count;
         }
 
-        public IEnumerable<Entity> Entities => m_componentOwners;
+        /// <summary>
+        /// Checks if an entity has 
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public bool HasComponent(Entity entity)
+        {
+            return m_entityToComponentLinks.ContainsKey(entity.id);
+        }
+
+        /// <summary>
+        /// Removes the component stored in this registry from a list of <paramref name="entities"/>.
+        /// The caller shall ensure that there is no duplication in the list and all entities have the said
+        /// component.
+        /// </summary>
+        /// <param name="entities">The list of entities from which this component shall be removed</param>
+        /// <remarks>The bulk operation saves on the cost of multiple virtual function calls</remarks>
+        public abstract void RemoveComponentBulkUnchecked(List<Entity> entities);
+    }
+
+    internal sealed class ComponentRegistry<T> : ComponentRegistryBase where T : struct, IEntityComponent<T>
+    {
+        // The array storing actual component data
+        private CompactArrayList<T> m_components = new();
+
+        public ComponentRegistry()
+        {
+            m_typeId = ComponentTypeId<T>.Value;
+        }
 
         // All the component manipulation functions below do not check for whether the entity
         // is alive (i.e. its version is current). This should be guaranteed by the caller!
 
-        /// <summary>
-        /// Creates a component registry that stores a certain type of component
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <returns></returns>
-        public static ComponentRegistry Create<T>() where T : struct, IEntityComponent<T>
-        {
-            var registry = new ComponentRegistry(ComponentTypeId<T>.Value)
-            {
-                m_components = new CompactArrayList<T>(),
-            };
-
-            return registry;
-        }
-
-        private ComponentRegistry(ComponentTypeId typeId)
-        {
-            m_typeId = typeId;
-        }
-
-        public OptionalRef<T> TryGetComponent<T>(Entity entity) where T : struct, IEntityComponent<T>
+        public OptionalRef<T> TryGetComponent(Entity entity)
         {
             Debug.Assert(ComponentTypeId<T>.Value == m_typeId);
             var e2CLink = m_entityToComponentLinks.TryGetValue(entity.id);
@@ -497,16 +496,10 @@ namespace Puffercat.Uxt.ECS.Core
                 return default;
             }
 
-            var componentArray = CastComponentArray<T>();
-            return new OptionalRef<T>(ref componentArray.At(e2CLink.Value.componentAddress));
+            return new OptionalRef<T>(ref m_components.At(e2CLink.Value.componentAddress));
         }
 
-        public bool HasComponent(Entity entity)
-        {
-            return m_entityToComponentLinks.ContainsKey(entity.id);
-        }
-
-        public ref T AddComponent<T>(Entity entity) where T : struct, IEntityComponent<T>
+        public ref T AddComponent(Entity entity)
         {
             Debug.Assert(ComponentTypeId<T>.Value == m_typeId);
             if (m_entityToComponentLinks.ContainsKey(entity.id))
@@ -514,36 +507,49 @@ namespace Puffercat.Uxt.ECS.Core
                 throw new Exception($"Entity {entity.id} already has component {typeof(T)}");
             }
 
-            return ref AddComponentUnchecked<T>(entity);
+            return ref AddComponentUnchecked(entity);
         }
 
-        public ref T AddOrGetComponent<T>(Entity entity, out bool isNewComponent) where T : struct, IEntityComponent<T>
+        public ref T AddOrGetComponent(Entity entity, out bool isNewComponent)
         {
             Debug.Assert(ComponentTypeId<T>.Value == m_typeId);
             ref var e2CLink = ref m_entityToComponentLinks.TryGetValue(entity.id, out var success);
             if (success)
             {
-                var componentArray = CastComponentArray<T>();
                 isNewComponent = false;
-                return ref componentArray.At(e2CLink.componentAddress);
+                return ref m_components.At(e2CLink.componentAddress);
             }
             else
             {
                 isNewComponent = true;
-                return ref AddComponentUnchecked<T>(entity);
+                return ref AddComponentUnchecked(entity);
             }
         }
 
-        private ref T AddComponentUnchecked<T>(Entity entity) where T : struct, IEntityComponent<T>
+        private ref T AddComponentUnchecked(Entity entity)
         {
-            var componentArray = CastComponentArray<T>();
-            var componentAddress = componentArray.Count;
+            var componentAddress = m_components.Count;
             m_entityToComponentLinks.Add(entity.id, new EntityComponentLink(componentAddress));
             m_componentOwners.Add(entity);
-            return ref componentArray.Add(default);
+            return ref m_components.Add(default);
         }
 
-        public void RemoveComponentUnchecked(Entity entity)
+        /// <summary>
+        /// Removes the component stored in this registry from a list of <paramref name="entities"/>.
+        /// The caller shall ensure that there is no duplication in the list and all entities have the said
+        /// component.
+        /// </summary>
+        /// <param name="entities">The list of entities from which this component shall be removed</param>
+        /// <remarks>The bulk operation saves on the cost of multiple virtual function calls</remarks>
+        public override void RemoveComponentBulkUnchecked(List<Entity> entities)
+        {
+            foreach (var entity in entities)
+            {
+                RemoveComponentUnchecked(entity);
+            }
+        }
+
+        private void RemoveComponentUnchecked(Entity entity)
         {
             // TODO: Insert optional instrumentation to check whether entity has the said component
 
@@ -553,11 +559,6 @@ namespace Puffercat.Uxt.ECS.Core
             m_componentOwners.RemoveAt(e2CLink.componentAddress);
             m_components.RemoveAt(e2CLink.componentAddress);
             m_entityToComponentLinks.Remove(entity.id);
-        }
-
-        private CompactArrayList<T> CastComponentArray<T>() where T : struct, IEntityComponent<T>
-        {
-            return (CompactArrayList<T>)m_components;
         }
     }
 }
