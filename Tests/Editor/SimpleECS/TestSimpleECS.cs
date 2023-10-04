@@ -2,7 +2,6 @@
 using NUnit.Framework;
 using Puffercat.Uxt.ECS.Components;
 using Puffercat.Uxt.ECS.Core;
-using Puffercat.Uxt.ECS.Extensions;
 using UnityEngine;
 
 namespace Puffercat.Uxt.Tests.Editor.SimpleECS
