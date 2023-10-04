@@ -1,6 +1,5 @@
 ﻿using System.Linq;
 using NUnit.Framework;
-using Puffercat.Uxt.ECS.Components;
 using Puffercat.Uxt.ECS.Core;
 using UnityEngine;
 
@@ -17,15 +16,15 @@ namespace Puffercat.Uxt.Tests.Editor.SimpleECS
             public Vector3 scale;
         }
 
-        private struct EnemyTag : IEntityTag<EnemyTag>
+        private struct EnemyTag : IEntityComponent<EnemyTag>
         {
         }
 
-        private struct FriendlyTag : IEntityTag<FriendlyTag>
+        private struct FriendlyTag : IEntityComponent<FriendlyTag>
         {
         }
 
-        private struct NeutralTag : IEntityTag<NeutralTag>
+        private struct NeutralTag : IEntityComponent<NeutralTag>
         {
         }
 
@@ -208,7 +207,7 @@ namespace Puffercat.Uxt.Tests.Editor.SimpleECS
             Assert.AreEqual(0, m_registry.GetAllEntitiesWithComponent<EnemyTag>().Count());
         }
 
-        public struct CopyMarker : IEntityTag<CopyMarker>
+        public struct CopyMarker : IEntityComponent<CopyMarker>
         {
         }
 
@@ -251,44 +250,6 @@ namespace Puffercat.Uxt.Tests.Editor.SimpleECS
             m_registry.RemoveComponentDestructionCallback(transformDestructionCallback);
             m_registry.ProcessDestruction();
             Assert.AreEqual(0, callbackCounter);
-        }
-
-        private struct IntComponent : IEntityComponent<IntComponent>
-        {
-            public int value;
-        }
-        
-        [Test]
-        public void SimpleSnapshot()
-        {
-            for (var i = 0; i < 512; ++i)
-            {
-                var entity = m_registry.CreateEntityWithSnapshotSupport();
-                m_registry.AddOrGetComponent<IntComponent>(entity).value = i * 2;
-            }
-            
-            m_registry.MakeSnapshot();
-
-            foreach (var entity in m_registry.GetSnapshotSourceEntities<IntComponent>())
-            {
-                ref var intComp = ref m_registry.AddOrGetComponent<IntComponent>(entity);
-                Assert.True(intComp.value % 2 == 0);
-                intComp.value += 1;
-            }
-
-            foreach (var entity in m_registry.GetSnapshotSourceEntities<IntComponent>())
-            {
-                ref var intComp = ref m_registry.AddOrGetComponent<IntComponent>(entity);
-                Assert.True(intComp.value % 2 == 1);
-            }
-            
-            m_registry.RestoreSnapshot();
-            
-            foreach (var entity in m_registry.GetSnapshotSourceEntities<IntComponent>())
-            {
-                ref var intComp = ref m_registry.AddOrGetComponent<IntComponent>(entity);
-                Assert.True(intComp.value % 2 == 0);
-            }
         }
     }
 }
