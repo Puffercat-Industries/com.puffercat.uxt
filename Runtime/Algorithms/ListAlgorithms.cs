@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 
 namespace Puffercat.Uxt.Algorithms
@@ -18,15 +19,15 @@ namespace Puffercat.Uxt.Algorithms
         /// <returns></returns>
         public static int DistinctRange<T>(
             this List<T> list,
-            int start, 
+            int start,
             int end)
         {
             return DistinctRange(list, start, end, EqualityComparer<T>.Default);
         }
-        
+
         public static int DistinctRange<T>(
             this List<T> list,
-            int start, 
+            int start,
             int end,
             IEqualityComparer<T> comparer)
         {
@@ -39,7 +40,7 @@ namespace Puffercat.Uxt.Algorithms
             {
                 return start;
             }
-            
+
             ++start;
 
             for (var i = start; i != end; ++i)
@@ -58,6 +59,51 @@ namespace Puffercat.Uxt.Algorithms
         {
             if (start >= list.Count) return;
             list.RemoveRange(start, list.Count - start);
+        }
+
+        public static void SetIntersection<T>(
+            List<T> x, int xStart, int xEnd,
+            List<T> y, int yStart, int yEnd,
+            List<T> outIntersection)
+        {
+            var comparer = Comparer<T>.Default;
+            SetIntersection(
+                x, xStart, xEnd,
+                y, yStart, yEnd,
+                outIntersection,
+                (lhs, rhs) => comparer.Compare(lhs, rhs));
+        }
+
+        public static void SetIntersection<T>(
+            List<T> x, int xStart, int xEnd,
+            List<T> y, int yStart, int yEnd,
+            List<T> outIntersection,
+            Comparison<T> comparison)
+        {
+            outIntersection.Clear();
+            var i = xStart;
+            var j = yStart;
+
+            while (true)
+            {
+                if (i == xEnd) break;
+                if (j == yEnd) break;
+                var compareResult = comparison(x[i], y[j]);
+                switch (compareResult)
+                {
+                    case 0:
+                        ++i;
+                        ++j;
+                        outIntersection.Add(x[i]);
+                        break;
+                    case < 0:
+                        ++i;
+                        break;
+                    default:
+                        ++j;
+                        break;
+                }
+            }
         }
     }
 }
