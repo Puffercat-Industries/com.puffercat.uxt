@@ -63,5 +63,11 @@ namespace Puffercat.Uxt.Utils
                 }
             }
         }
+
+        public static void SetIdentityTransform(this Transform transform)
+        {
+            transform.SetLocalPositionAndRotation(Vector3.zero, Quaternion.identity);
+            transform.localScale = Vector3.one;
+        }
     }
 }
