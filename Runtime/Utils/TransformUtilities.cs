@@ -5,6 +5,14 @@ namespace Puffercat.Uxt.Utils
 {
     public static class TransformUtilities
     {
+        public static void DestroyAllChildren(this Transform root)
+        {
+            for (var i = root.childCount - 1; i >= 0; --i)
+            {
+                Object.Destroy(root.GetChild(i).gameObject);
+            }
+        }
+        
         public static void GetRootComponents<T>(this Transform root, List<T> outputList)
         {
             if (root.TryGetComponent(out T comp))
