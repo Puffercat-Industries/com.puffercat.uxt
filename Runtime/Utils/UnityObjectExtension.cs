@@ -1,5 +1,10 @@
 ﻿using System;
+using UnityEngine;
 using Object = UnityEngine.Object;
+
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 
 namespace Puffercat.Uxt.Utils
 {
@@ -23,5 +28,37 @@ namespace Puffercat.Uxt.Utils
             return field;
         }
 #endif
+
+        public static T InstantiateAsPrefabIfPossible<T>(this T obj, Transform parent) where T : Object
+        {
+            if (obj.GetTransform() == null)
+            {
+                throw new ArgumentException("Object must be a GameObject or a Component");
+            }
+
+#if UNITY_EDITOR
+            if (PrefabUtility.IsPartOfPrefabAsset(obj))
+            {
+                var instance = (T)PrefabUtility.InstantiatePrefab(obj, parent);
+                return instance;
+            }
+#endif
+            return Object.Instantiate(obj, parent);
+        }
+
+        private static Transform GetTransform(this Object obj)
+        {
+            if (obj is Component component)
+            {
+                return component.transform;
+            }
+
+            if (obj is GameObject gameObject)
+            {
+                return gameObject.transform;
+            }
+
+            return null;
+        }
     }
 }
