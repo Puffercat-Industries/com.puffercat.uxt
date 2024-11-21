@@ -4,6 +4,7 @@ using Object = UnityEngine.Object;
 
 #if UNITY_EDITOR
 using UnityEditor;
+using UnityEditor.SceneManagement;
 #endif
 
 namespace Puffercat.Uxt.Utils
@@ -37,7 +38,8 @@ namespace Puffercat.Uxt.Utils
             }
 
 #if UNITY_EDITOR
-            if (PrefabUtility.IsPartOfPrefabAsset(obj))
+            if ((!parent && !Application.isPlaying || !Application.IsPlaying(parent)) &&
+                PrefabUtility.IsPartOfPrefabAsset(obj))
             {
                 var instance = (T)PrefabUtility.InstantiatePrefab(obj, parent);
                 return instance;
