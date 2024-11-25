@@ -85,5 +85,29 @@ namespace Puffercat.Uxt.Utils
             transform.SetLocalPositionAndRotation(Vector3.zero, Quaternion.identity);
             transform.localScale = Vector3.one;
         }
+
+        public static T WithIdentityTransform<T>(this T component) where T : Component
+        {
+            component.transform.SetIdentityTransform();
+            return component;
+        }
+
+        public static GameObject WithIdentityTransform(this GameObject go)
+        {
+            go.transform.SetIdentityTransform();
+            return go;
+        }
+
+        public static GameObject WithParent(this GameObject go, Transform parent)
+        {
+            go.transform.SetParent(parent, false);
+            return go;
+        }
+
+        public static GameObject WithHideFlags(this GameObject go, HideFlags flags)
+        {
+            go.hideFlags = flags;
+            return go;
+        }
     }
 }
